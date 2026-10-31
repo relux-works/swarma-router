@@ -9,9 +9,14 @@ a stronger model, with lower or higher reasoning. Managers assign tasks through 
 It is an independent module. It connects to the model catalog, the session host's usage events, the board and the
 product cards through plugin seams, not hard wiring.
 
-Status: the full routing/classification interface remains a design. A separate, reduced
-`queued-task-handoff/0.1.0` Go implementation is being prepared for review. It posts an explicitly
-authorized task notice; it does not implement automatic Route, Apply, model selection or launch.
+Status: the full routing/classification interface remains a design. The reduced
+`queued-task-handoff/0.1.0` Go implementation posts an explicitly authorized task notice.
+Qualification on 2026-10-31 covers one Darwin arm64 plan, dispatch, historical receipt replay
+and server-readback tuple. Automatic Route, Apply, model selection and launch remain unimplemented.
+
+The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
+interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
+retain their required validation and installation gates.
 
 ## Queued task handoff
 
