@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"relux.works/swarma-router/handoff"
@@ -28,7 +29,10 @@ func (*inertAdapter) VerifyEvent(context.Context, handoff.Request, handoff.Polic
 // CLI intake accepts the explicitly supplied private policy and emits JSON for a
 // valid plan; malformed flags/files/extra fields refuse before the inert adapter.
 func TestCLIIntake(t *testing.T) {
-	dir := t.TempDir()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	req := filepath.Join(dir, "request.json")
 	pol := filepath.Join(dir, "policy.json")
 	journal := filepath.Join(dir, "journal")
@@ -73,5 +77,64 @@ func TestCLIIntake(t *testing.T) {
 	before := a.checks
 	if exit := runWithEngine(context.Background(), args, &out, handoff.Engine{Adapter: a}); exit != 2 || a.checks != before || a.posts != 0 {
 		t.Fatal(exit, out.String())
+	}
+	if err := os.Chmod(pol, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Case aliases, in either order or alone, must refuse before source checks,
+	// posts or journal creation. Canonical plan above remains the positive control.
+	rawRequest, _ := json.Marshal(r)
+	rawPolicy, _ := json.Marshal(p)
+	for _, tc := range []struct{ name, request, policy, reason string }{
+		{"plan-then-alias-dispatch", strings.Replace(string(rawRequest), `"action":"plan"`, `"action":"plan","Action":"dispatch"`, 1), string(rawPolicy), "invalid_request_file"},
+		{"alias-dispatch-then-plan", strings.Replace(string(rawRequest), `"action":"plan"`, `"Action":"dispatch","action":"plan"`, 1), string(rawPolicy), "invalid_request_file"},
+		{"alias-only", strings.Replace(string(rawRequest), `"action"`, `"Action"`, 1), string(rawPolicy), "invalid_request_file"},
+		{"escaped-alias", strings.Replace(string(rawRequest), `"action"`, `"\u0041ction"`, 1), string(rawPolicy), "invalid_request_file"},
+		{"policy-alias", string(rawRequest), strings.Replace(string(rawPolicy), `"sender"`, `"Sender"`, 1), "invalid_policy_file"},
+		{"nested-policy-alias", string(rawRequest), strings.Replace(string(rawPolicy), `"members"`, `"Members"`, 1), "invalid_policy_file"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(req, []byte(tc.request), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(pol, []byte(tc.policy), 0600); err != nil {
+				t.Fatal(err)
+			}
+			out.Reset()
+			before := a.checks
+			if exit := runWithEngine(context.Background(), args, &out, handoff.Engine{Adapter: a}); exit != 2 || a.checks != before || a.posts != 0 {
+				t.Fatal("alias reached engine", exit, out.String(), a)
+			}
+			var result handoff.Result
+			if json.Unmarshal(out.Bytes(), &result) != nil || result.Status != "refused" || result.Reason != tc.reason {
+				t.Fatal(out.String())
+			}
+			if _, err := os.Stat(journal); !os.IsNotExist(err) {
+				t.Fatal("rejected input created journal", err)
+			}
+		})
+	}
+	// Canonical dispatch still posts once; its matching replay makes no new call.
+	r.Action = "dispatch"
+	write(req, r)
+	write(pol, p)
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args = []string{"--request", req, "--policy", pol, "--journal", filepath.Join(realDir, "journal")}
+	before = a.checks
+	for i := 0; i < 2; i++ {
+		out.Reset()
+		if exit := runWithEngine(context.Background(), args, &out, handoff.Engine{Adapter: a}); exit != 0 {
+			t.Fatal(exit, out.String())
+		}
+		var result handoff.Result
+		if json.Unmarshal(out.Bytes(), &result) != nil || result.Status != "queued_notification" || result.EventID != "$sent" {
+			t.Fatal(out.String())
+		}
+	}
+	if a.posts != 1 || a.checks != before+1 {
+		t.Fatal("dispatch/replay duplicated effects", a)
 	}
 }

@@ -26,6 +26,10 @@ func localConfig(p Policy) map[string]any {
 func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 	cases := []struct{ plant, reason string }{
 		{"valid", ""}, {"remote", "board_authority_not_local"}, {"storage", "board_authority_not_local"},
+		{"unrelated-metadata", ""}, {"board-alias-only", "board_authority_not_local"},
+		{"board-alias-shadow", "board_authority_not_local"}, {"nested-active-shadow", "board_authority_not_local"},
+		{"task-alias", "task_source_unavailable"}, {"member-alias", "membership_unavailable"},
+		{"reply-alias", "reply_unavailable"},
 		{"task-title", "task_source_mismatch"}, {"task-id", "task_source_mismatch"},
 		{"task-absent", "task_source_unavailable"}, {"partial-members", "membership_binding_mismatch"},
 		{"wrong-caller", "membership_binding_mismatch"}, {"missing-caller", "caller_not_joined"},
@@ -47,6 +51,21 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 						t.Fatal("unsafe board wire", args)
 					}
 					cfg := localConfig(p)
+					if tc.plant == "unrelated-metadata" {
+						cfg["unrelated"] = map[string]any{"Action": "metadata", "nested": []any{1, true}}
+					}
+					if tc.plant == "board-alias-only" || tc.plant == "board-alias-shadow" {
+						delete(cfg, "effective_mode")
+						cfg["Effective_Mode"] = "local"
+						b := encoded(cfg)
+						if tc.plant == "board-alias-shadow" {
+							b = append([]byte(`{"effective_mode":"remote",`), b[1:]...)
+						}
+						return b, nil
+					}
+					if tc.plant == "nested-active-shadow" {
+						cfg["local"] = json.RawMessage(`{"active":false,"Active":true,"board_dir":` + string(encoded(p.BoardDir)) + `}`)
+					}
 					if tc.plant == "remote" {
 						cfg["effective_mode"] = "remote"
 					}
@@ -63,6 +82,10 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 						return nil, errors.New("absent")
 					}
 					task := map[string]string{"id": r.TaskID, "title": r.TaskTitle}
+					if tc.plant == "task-alias" {
+						delete(task, "title")
+						task["Title"] = r.TaskTitle
+					}
 					if tc.plant == "task-title" {
 						task["title"] = "unprefixed guessed title"
 					}
@@ -79,6 +102,10 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 						t.Fatal(args)
 					}
 					members := []map[string]string{{"user_id": "@caller:example.test", "membership": "join"}, {"user_id": "@recipient:example.test", "membership": "join"}, {"user_id": "@author:example.test", "membership": "join"}}
+					if tc.plant == "member-alias" {
+						delete(members[0], "user_id")
+						members[0]["User_ID"] = "@caller:example.test"
+					}
 					if tc.plant == "missing-caller" {
 						members = members[1:]
 					}
@@ -118,6 +145,9 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 						v["sender"] = "absent"
 					case "reply-absent", "read-timeout":
 						return nil, context.DeadlineExceeded
+					case "reply-alias":
+						delete(v, "topic")
+						v["Topic"] = r.Topic
 					}
 				} else {
 					v["sender"] = p.Sender
@@ -130,7 +160,7 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 			})
 			// TempDir's existing leaf may be 0755; create the journal's own private leaf.
 			got := (Engine{Adapter: CLIAdapter{Runner: runner}}).Execute(context.Background(), r, p, filepath.Join(realTemp(t), "journal"))
-			if tc.plant == "valid" {
+			if tc.reason == "" {
 				if got.Status != "queued_notification" || posts != 1 {
 					t.Fatalf("valid %+v posts%d", got, posts)
 				}
@@ -145,10 +175,21 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 // does not convert a wrong body/recipient/thread/sender into a queued receipt.
 func TestReceiptBindingPlants(t *testing.T) {
 	r, p := inputs()
-	for _, field := range []string{"valid", "type", "event_id", "room_id", "sender", "kind", "topic", "to", "re", "body", "duplicate-key", "timeout"} {
+	for _, field := range []string{"valid", "metadata", "alias-only", "alias-shadow", "unicode-alias", "type", "event_id", "room_id", "sender", "kind", "topic", "to", "re", "body", "duplicate-key", "timeout"} {
 		t.Run(field, func(t *testing.T) {
 			v := map[string]any{"type": "message", "event_id": "$sent", "room_id": p.RoomID, "sender": p.Sender, "kind": "notice", "topic": r.Topic, "to": []string{r.Member}, "re": r.ReplyTo, "body": notice(r)}
-			if field != "valid" && field != "duplicate-key" && field != "timeout" {
+			if field == "metadata" {
+				v["unrelated"] = map[string]any{"Sender": "metadata"}
+			}
+			if field == "alias-only" || field == "alias-shadow" || field == "unicode-alias" {
+				delete(v, "sender")
+				alias := "Sender"
+				if field == "unicode-alias" {
+					alias = "ſender"
+				}
+				v[alias] = p.Sender
+			}
+			if field != "valid" && field != "metadata" && field != "alias-only" && field != "alias-shadow" && field != "unicode-alias" && field != "duplicate-key" && field != "timeout" {
 				if field == "to" {
 					v[field] = []string{r.Member, "extra"}
 				} else {
@@ -163,13 +204,18 @@ func TestReceiptBindingPlants(t *testing.T) {
 				if field == "duplicate-key" {
 					b = append([]byte(`{"sender":"wrong",`), b[1:]...)
 				}
+				if field == "alias-shadow" {
+					b = append([]byte(`{"sender":"wrong",`), b[1:]...)
+				}
 				return b, nil
 			})}
 			got := a.VerifyEvent(context.Background(), r, p, "$sent", notice(r))
-			if field == "valid" {
+			if field == "valid" || field == "metadata" {
 				if got != "" {
 					t.Fatal(got)
 				}
+			} else if strings.Contains(field, "alias") && got != "event_readback_unavailable" {
+				t.Fatal("alias was not rejected by decoder", got)
 			} else if got == "" {
 				t.Fatal("known binding violation not detected")
 			}

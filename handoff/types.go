@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"unicode"
@@ -126,8 +127,9 @@ func validate(r Request, p Policy) string {
 	return "member_not_authorized"
 }
 
-// Decode rejects duplicate keys, trailing values, unknown fields and invalid UTF-8.
-// Adapter decoding uses the same syntax checks while allowing unrelated metadata.
+// Decode requires exact tagged field names at every closed object level and rejects
+// duplicate keys, trailing values and invalid UTF-8. Open adapter projections allow
+// unrelated metadata, but never case aliases of their recognized binding fields.
 func Decode(data []byte, out any) error { return decode(data, out, true) }
 
 func decode(data []byte, out any, closed bool) error {
@@ -141,11 +143,80 @@ func decode(data []byte, out any, closed bool) error {
 	if _, err := d.Token(); err != io.EOF {
 		return errors.New("trailing JSON")
 	}
+	t := reflect.TypeOf(out)
+	if t == nil || t.Kind() != reflect.Pointer || reflect.ValueOf(out).IsNil() {
+		return errors.New("JSON output must be a nonnil pointer")
+	}
+	if err := exactFields(data, t.Elem(), closed); err != nil {
+		return err
+	}
 	d = json.NewDecoder(bytes.NewReader(data))
 	if closed {
 		d.DisallowUnknownFields()
 	}
 	return d.Decode(out)
+}
+
+// The allowlist comes only from explicit JSON tags, before encoding/json can
+// assign a case-insensitive match. Raw projections are checked when decoded into
+// their concrete binding type; unknown open metadata is never assigned to one.
+func exactFields(data []byte, t reflect.Type, closed bool) error {
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t == reflect.TypeOf(json.RawMessage{}) {
+		return nil
+	}
+	switch t.Kind() {
+	case reflect.Struct:
+		fields := map[string]reflect.Type{}
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+			if f.PkgPath != "" {
+				continue
+			}
+			name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+			if name == "-" {
+				continue
+			}
+			if name == "" || f.Anonymous || fields[name] != nil {
+				return errors.New("unsupported JSON schema")
+			}
+			fields[name] = f.Type
+		}
+		var object map[string]json.RawMessage
+		if err := json.Unmarshal(data, &object); err != nil {
+			return err
+		}
+		for key, value := range object {
+			field, ok := fields[key]
+			if !ok {
+				if closed {
+					return errors.New("unknown JSON field")
+				}
+				for canonical := range fields {
+					if strings.EqualFold(key, canonical) {
+						return errors.New("noncanonical JSON field")
+					}
+				}
+				continue
+			}
+			if err := exactFields(value, field, closed); err != nil {
+				return err
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		var values []json.RawMessage
+		if err := json.Unmarshal(data, &values); err != nil {
+			return err
+		}
+		for _, value := range values {
+			if err := exactFields(value, t.Elem(), closed); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func uniqueValue(d *json.Decoder) error {

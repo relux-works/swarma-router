@@ -75,6 +75,8 @@ Keep one journal directory for the lifetime of these correlation IDs.
 
 Every result carries `contract`, `status` and `correlation_id`; `event_id`, `notice` and a bounded
 `reason` appear when applicable. Native subprocess stdout/stderr is never echoed as an error.
+Closed JSON fields require their exact case-sensitive spelling, including nested objects.
+Open source projections allow unrelated metadata but reject aliases of recognized fields.
 Unknown/duplicate JSON keys and trailing values are rejected. Input/journal files are limited to
 64KiB, policies to 256 tasks and 64 recipients per task. Each subprocess has a 30s deadline,
 2MiB stdout and 64KiB stderr limits. Pre-send failures refuse; post/readback ambiguity is unknown.
