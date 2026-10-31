@@ -84,7 +84,10 @@ Unknown/duplicate JSON keys and trailing values are rejected. Input/journal file
 ## Recovery and rollback
 
 The intent is atomically saved and fsynced **before** the post. A matching verified replay returns
-the existing historical receipt without sending. A changed request or policy under the same
+the existing historical receipt without sending, after confirming its file and directory durability.
+Every journal open syncs its parent, including recovery from an incomplete creation. A failed
+receipt durability confirmation remains unknown with its known event ID and never reposts.
+A changed request or policy under the same
 correlation conflicts. Historical replay is not fresh membership, authority or task-state evidence.
 
 An intent without a returned event ID may represent a crash before the call or a successful send

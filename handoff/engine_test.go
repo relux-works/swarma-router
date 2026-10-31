@@ -193,7 +193,8 @@ func (m *memoryJournal) Save(_ string, r Record) error {
 	m.exists = true
 	return nil
 }
-func (*memoryJournal) Close() error { return nil }
+func (*memoryJournal) Close() error      { return nil }
+func (*memoryJournal) Sync(string) error { return nil }
 
 // An injected write failure has different pre/post-effect outcomes. A preserved
 // pre-send intent forbids re-posting even if later receipt persistence failed.

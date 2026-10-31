@@ -14,6 +14,8 @@ import (
 
 const FileLimit = 64 * 1024
 
+var errJournalParentNotDurable = errors.New("journal parent not durable")
+
 type Record struct {
 	Contract     string  `json:"contract"`
 	Request      Request `json:"request"`
@@ -53,17 +55,26 @@ func (r Record) validate() error {
 type Journal interface {
 	Load(string) (Record, bool, error)
 	Save(string, Record) error
+	// Sync confirms the existing receipt file and its directory without rewriting it.
+	Sync(string) error
 	Close() error
 }
 
 type fileJournal struct {
-	dir  string
-	lock *os.File
+	dir      string
+	lock     *os.File
+	syncFile func(*os.File) error
 }
 
 // OpenJournal takes a nonblocking lock. It never removes an uncertain receipt.
 // Journal custody assumes trusted same-user ancestors, not hostile local root.
 func OpenJournal(dir string) (Journal, error) {
+	return openJournal(dir, (*os.File).Sync)
+}
+
+// The injected operation is only an internal filesystem fault seam; normal
+// callers always use os.File.Sync, with no request-controlled durability mode.
+func openJournal(dir string, syncFile func(*os.File) error) (Journal, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil || dir == "" {
 		return nil, errors.New("invalid journal directory")
@@ -91,18 +102,6 @@ func OpenJournal(dir string) (Journal, error) {
 		if err := os.Mkdir(abs, 0700); err != nil && !os.IsExist(err) {
 			return nil, err
 		}
-		d, err := os.Open(ancestor)
-		if err != nil {
-			return nil, err
-		}
-		err = d.Sync()
-		closeErr := d.Close()
-		if err != nil {
-			return nil, err
-		}
-		if closeErr != nil {
-			return nil, closeErr
-		}
 	}
 	info, err := os.Lstat(abs)
 	if err != nil || !info.IsDir() || !ownedPrivate(info) {
@@ -121,7 +120,26 @@ func OpenJournal(dir string) (Journal, error) {
 		lock.Close()
 		return nil, errors.New("journal locked")
 	}
-	return &fileJournal{dir: abs, lock: lock}, nil
+	// Existence can follow a failed/interrupted Mkdir+parent sync. Reestablish
+	// parent durability on every open, under the lock, before any dispatch work.
+	if err := syncDirectory(filepath.Dir(abs), syncFile); err != nil {
+		lock.Close()
+		return nil, fmt.Errorf("%w: %v", errJournalParentNotDurable, err)
+	}
+	return &fileJournal{dir: abs, lock: lock, syncFile: syncFile}, nil
+}
+
+func syncDirectory(path string, syncFile func(*os.File) error) error {
+	d, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	err = syncFile(d)
+	closeErr := d.Close()
+	if err != nil {
+		return err
+	}
+	return closeErr
 }
 
 func ownedPrivate(info os.FileInfo) bool {
@@ -188,7 +206,7 @@ func (j *fileJournal) Save(key string, r Record) error {
 		f.Close()
 		return err
 	}
-	if err := f.Sync(); err != nil {
+	if err := j.syncFile(f); err != nil {
 		f.Close()
 		return err
 	}
@@ -198,12 +216,30 @@ func (j *fileJournal) Save(key string, r Record) error {
 	if err := os.Rename(name, j.path(key)); err != nil {
 		return err
 	}
-	d, err := os.Open(j.dir)
+	return syncDirectory(j.dir, j.syncFile)
+}
+
+// Sync repairs visibility-without-confirmed-durability after a post-rename Save
+// failure. A verified record is never cached success based on readable bytes alone.
+func (j *fileJournal) Sync(key string) error {
+	f, err := os.OpenFile(j.path(key), os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return err
 	}
-	defer d.Close()
-	return d.Sync()
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() || !ownedPrivate(info) || info.Size() > FileLimit {
+		f.Close()
+		return errors.New("invalid receipt for durability confirmation")
+	}
+	err = j.syncFile(f)
+	closeErr := f.Close()
+	if err != nil {
+		return err
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	return syncDirectory(j.dir, j.syncFile)
 }
 
 func (j *fileJournal) Close() error { return j.lock.Close() }

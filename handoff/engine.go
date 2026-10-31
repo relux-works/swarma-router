@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -66,6 +67,9 @@ func (e Engine) Execute(ctx context.Context, r Request, p Policy, dir string) Re
 	j, err := open(dir)
 	if err != nil {
 		result.Reason = "journal_unavailable_or_locked"
+		if errors.Is(err, errJournalParentNotDurable) {
+			result.Reason = "journal_parent_not_durable"
+		}
 		return result
 	}
 	defer j.Close()
@@ -86,6 +90,12 @@ func (e Engine) Execute(ctx context.Context, r Request, p Policy, dir string) Re
 			return result
 		}
 		if rec.Phase == "verified" {
+			// A prior Save may have installed these bytes before its final sync
+			// failed. Resolve that durability before trusting a historical receipt.
+			if j.Sync(r.CorrelationID) != nil {
+				result.Status, result.EventID, result.Reason = "unknown", rec.EventID, "verified_receipt_not_durable"
+				return result
+			}
 			result.Status, result.EventID = "queued_notification", rec.EventID
 			return result
 		}
