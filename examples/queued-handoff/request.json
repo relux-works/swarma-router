@@ -1,0 +1,12 @@
+{
+  "contract": "queued-task-handoff/0.1.0",
+  "action": "plan",
+  "correlation_id": "example-not-live-1",
+  "project": "example",
+  "task_id": "TASK-261031-example",
+  "task_title": "TASK-261031-example: Example task",
+  "member": "recipient",
+  "room": "example",
+  "topic": "work",
+  "reply_to": "$example-not-live"
+}
