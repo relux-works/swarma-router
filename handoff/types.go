@@ -81,7 +81,10 @@ var (
 )
 
 func textOK(s string) bool {
-	return s != "" && len(s) <= 256 && utf8.ValidString(s) && strings.TrimSpace(s) == s && strings.IndexFunc(s, unicode.IsControl) == -1
+	return s != "" && len(s) <= 256 && utf8.ValidString(s) && strings.TrimSpace(s) == s && strings.IndexFunc(s, func(r rune) bool {
+		return unicode.In(r, unicode.Cc, unicode.Cf, unicode.Zl, unicode.Zp, unicode.Co, unicode.Cs) ||
+			(r >= 0xfdd0 && r <= 0xfdef) || r&0xffff >= 0xfffe
+	}) == -1
 }
 
 func validate(r Request, p Policy) string {
@@ -137,7 +140,7 @@ func decode(data []byte, out any, closed bool) error {
 		return errors.New("invalid JSON")
 	}
 	d := json.NewDecoder(bytes.NewReader(data))
-	if err := uniqueValue(d); err != nil {
+	if err := uniqueValue(d, 0); err != nil {
 		return err
 	}
 	if _, err := d.Token(); err != io.EOF {
@@ -219,10 +222,16 @@ func exactFields(data []byte, t reflect.Type, closed bool) error {
 	return nil
 }
 
-func uniqueValue(d *json.Decoder) error {
+func uniqueValue(d *json.Decoder, depth int) error {
 	t, err := d.Token()
 	if err != nil {
 		return err
+	}
+	if t == json.Delim('{') || t == json.Delim('[') {
+		depth++
+		if depth > 64 {
+			return errors.New("JSON nesting too deep")
+		}
 	}
 	switch t {
 	case json.Delim('{'):
@@ -237,7 +246,7 @@ func uniqueValue(d *json.Decoder) error {
 				return errors.New("duplicate JSON key")
 			}
 			seen[s] = true
-			if err := uniqueValue(d); err != nil {
+			if err := uniqueValue(d, depth); err != nil {
 				return err
 			}
 		}
@@ -247,7 +256,7 @@ func uniqueValue(d *json.Decoder) error {
 		}
 	case json.Delim('['):
 		for d.More() {
-			if err := uniqueValue(d); err != nil {
+			if err := uniqueValue(d, depth); err != nil {
 				return err
 			}
 		}

@@ -12,7 +12,10 @@ import (
 	"relux.works/swarma-router/handoff"
 )
 
-type inertAdapter struct{ checks, posts int }
+type inertAdapter struct {
+	checks, posts int
+	verifyReason  string
+}
 
 func (a *inertAdapter) ValidateSources(context.Context, handoff.Request, handoff.Policy) string {
 	a.checks++
@@ -22,8 +25,8 @@ func (a *inertAdapter) Post(context.Context, handoff.Request, handoff.Policy, st
 	a.posts++
 	return "$sent", nil
 }
-func (*inertAdapter) VerifyEvent(context.Context, handoff.Request, handoff.Policy, string, string) string {
-	return ""
+func (a *inertAdapter) VerifyEvent(context.Context, handoff.Request, handoff.Policy, string, string) string {
+	return a.verifyReason
 }
 
 // CLI intake accepts the explicitly supplied private policy and emits JSON for a
@@ -137,4 +140,23 @@ func TestCLIIntake(t *testing.T) {
 	if a.posts != 1 || a.checks != before+1 {
 		t.Fatal("dispatch/replay duplicated effects", a)
 	}
+	// A known posted event with failed verification is JSON unknown/exit 3;
+	// restoring readback reconciles that event without a second post.
+	r.CorrelationID = "uncertain"
+	write(req, r)
+	a.verifyReason = "event_readback_unavailable"
+	out.Reset()
+	priorPosts := a.posts
+	if exit := runWithEngine(context.Background(), args, &out, handoff.Engine{Adapter: a}); exit != 3 {
+		t.Fatal(exit, out.String())
+	}
+	if json.Unmarshal(out.Bytes(), &result) != nil || result.Status != "unknown" || result.EventID != "$sent" || result.Reason != "event_readback_unavailable" || a.posts != priorPosts+1 {
+		t.Fatal(out.String(), a)
+	}
+	a.verifyReason = ""
+	out.Reset()
+	if exit := runWithEngine(context.Background(), args, &out, handoff.Engine{Adapter: a}); exit != 0 || a.posts != priorPosts+1 {
+		t.Fatal(exit, out.String(), a)
+	}
+
 }

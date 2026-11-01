@@ -3,8 +3,10 @@ package handoff
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -103,6 +105,22 @@ func TestIntentValidationAndConflict(t *testing.T) {
 		{"reply", func(r *Request, p *Policy) { r.ReplyTo = "$other" }, "destination_not_authorized"},
 		{"member", func(r *Request, p *Policy) { r.Member = "unknown" }, "member_not_authorized"},
 		{"control-title", func(r *Request, p *Policy) { r.TaskTitle = "private\nmore" }, "invalid_request"},
+		{"policy-server", func(r *Request, p *Policy) { p.Server = "@bad" }, "invalid_policy"},
+		{"policy-room-id", func(r *Request, p *Policy) { p.RoomID = "room" }, "invalid_policy"},
+		{"duplicate-policy-member", func(r *Request, p *Policy) { p.Tasks[0].Members = []string{"recipient", "recipient"} }, "invalid_policy"},
+		{"policy-members-cap", func(r *Request, p *Policy) {
+			p.Tasks[0].Members = nil
+			for i := 0; i < 65; i++ {
+				p.Tasks[0].Members = append(p.Tasks[0].Members, fmt.Sprintf("member%d", i))
+			}
+		}, "invalid_policy"},
+		{"policy-tasks-cap", func(r *Request, p *Policy) {
+			for i := 0; i < 256; i++ {
+				p.Tasks = append(p.Tasks, TaskBinding{ID: fmt.Sprintf("TASK-261031-task%d", i), Title: "Other task", Members: []string{"recipient"}})
+			}
+		}, "invalid_policy"},
+		{"long-title", func(r *Request, p *Policy) { r.TaskTitle = strings.Repeat("a", 257) }, "invalid_request"},
+		{"untrimmed-title", func(r *Request, p *Policy) { r.TaskTitle = " title" }, "invalid_request"},
 		{"relative-storage", func(r *Request, p *Policy) { p.BoardDir = ".task-board" }, "invalid_policy"},
 		{"duplicate-policy-task", func(r *Request, p *Policy) { p.Tasks = append(p.Tasks, p.Tasks[0]) }, "invalid_policy"},
 	}

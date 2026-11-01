@@ -1,5 +1,39 @@
 # Optional plugins and static configuration
 
+## Implemented MVP seams
+
+These are linked Go interfaces in `relux.works/swarma-router/handoff`, available in the reduced
+`queued-task-handoff/0.1.0` engine. They are not implementations of the proposed full ports below.
+
+| Seam | Contract |
+| --- | --- |
+| `Adapter.ValidateSources(context.Context, Request, Policy) string` | Empty reason permits source admission; any nonempty reason refuses before a new post. Must check the exact task, local board authority, destination, caller/recipient membership and reply binding. |
+| `Adapter.Post(context.Context, Request, Policy, string) (string, error)` | One attempt after durable intent. Return exactly one valid event ID; error or malformed output is unknown even if a post happened. Never retry internally. |
+| `Adapter.VerifyEvent(context.Context, Request, Policy, string, string) string` | Empty reason means the exact event ID, room, sender, notice kind, topic, one recipient, reply and body match. Any nonempty reason keeps uncertainty and prevents a repost. |
+| `Runner.Run(context.Context, string, string, ...string) ([]byte, error)` | Explicit working directory, tool and argv; no shell. Native stdout is returned only on success; errors must not expose native streams. The production `ExecRunner` allows only `a2a`/`task-board`, scrubs board selectors for the board child only, and bounds runtime/output. |
+| `Journal.Load(string) (Record, bool, error)` | Missing is distinct from corrupt/unreadable; bind the correlation key and record integrity. Never treat corruption as permission for a new send. |
+| `Journal.Save(string, Record) error` | Durably install a bounded private record: write temp, sync file, close, rename, sync directory. Errors may follow visible bytes and must preserve uncertainty. |
+| `Journal.Sync(string) error` | Confirm the existing receipt file and directory durability without rewriting it, including historical replay. |
+| `Journal.Close() error` | Release journal custody/lock resources. |
+| `Engine.OpenJournal func(string) (Journal, error)` | Trusted injected storage/fault seam; nil uses `OpenJournal`. Hold the same exclusive correlation journal through the entire dispatch/reconciliation; no request-selected plugin or fallback storage. |
+
+`CLIAdapter` combines task-source, member-source and broker responsibilities. The CLI currently
+constructs `CLIAdapter{Runner: ExecRunner{}}` directly; there is no plugin discovery or registration
+command. The core validates the MVP's Matrix/local-name shapes. A custom linked adapter/runner/journal
+is trusted code requiring its own qualification; arbitrary request-supplied executable/configuration
+is not supported. The full design separates these responsibilities and adds independent source,
+claim, lifecycle and operation ports. The MVP has none of those production capabilities.
+
+The adapter requires JSON stdout from `task-board` for its explicit local configuration/task
+projections. Configuration must echo local configured/effective mode, exact project root and board
+directory, active local/inactive remote and no explicit remote override, checked again with the task
+projection. It requests `a2a room members ... --membership join --json` with complete joined rows and
+exact caller/room identity. `a2a read ... --json` must return one `type=message` projection with the
+exact bindings. For the posted event the supported same-server sender format is the bare local
+name; federated sender normalization is not implemented. `a2a post` stdout must contain exactly one
+bare event ID (surrounding whitespace allowed), no status prefix or commentary. A changed tool output
+contract needs adapter qualification; a printed ID alone proves no delivery or recipient acceptance.
+
 ## Declaration and registration design
 
 Use [interface-contract.md](interface-contract.md), **Proposed adapter ports and capability negotiation**, **Closed router-facing port records**, and **Observation plugins and frozen feature inputs**. The accepted design defines no released plugin package ID, discovery command, config filename or installation route.

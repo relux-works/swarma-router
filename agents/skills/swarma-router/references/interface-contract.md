@@ -5,7 +5,7 @@ Status: proposed documentation for review, not a released protocol or a qualifie
 
 ## Scope and evidence
 
-This draft specifies the router's own domain boundary, grounded in accepted concept R3, SHA-256 `5d8ddf621eb841c87f7375ced96f6097ed7a84b2b73ad80ffb15e4ee3e567f9b`. The domain operations and ports below are proposals owned by this module. They are not assertions that a board, product-card service, host, broker or Curator exposes these method names, schemas or guarantees. An adapter must translate a counterpart's separately confirmed contract; an unsupported guarantee is unavailable, never emulated as admitted behavior.
+This draft specifies the router's own domain boundary, grounded in task routing, worker adaptation and explicit effect authority. The domain operations and ports below are proposals owned by this module. They are not assertions that a board, product-card service, host, broker or Curator exposes these method names, schemas or guarantees. An adapter must translate a counterpart's separately confirmed contract; an unsupported guarantee is unavailable, never emulated as admitted behavior.
 
 No implementation, plugin, weights, installation, live lifecycle action, credentials or skill adoption is delivered here. The module remains independent. Future skill examples must name the released contract version and pass its conformance cases. No shared-specification change is implied by accepting this own-domain proposal.
 
@@ -386,15 +386,15 @@ These are contract cases for future Go tests and real-adapter qualification, not
 
 Future verification runs every selected lane and reports each verdict even after one fails; one red control must not hide later lanes. Fault/control fixtures stay isolated and cannot reset user devices, sessions or accounts. No product tests or model benchmarks can be claimed from these prose cases.
 
-## Counterpart-owned unknowns and coordination
+## Counterpart contracts and qualification gaps
 
-This is a proposed own-domain contract; documentation readiness and live qualification are separate. The supplied bounded source projections have been read in full. Their links, tests, installed homes and processes were not inspected or rerun here. No source implementation is required merely to specify or review this proposal.
+This is a proposed own-domain contract; documentation readiness and live qualification are separate. Source pins below bound historical capability observations; they do not establish present installation, liveness or production admission.
 
 | Source projection | Bounded current facts | Remaining effect |
 | --- | --- | --- |
 | Host source 6b5ed571f2c2fae179e36c1eb1784b90c347fa40 | M1/M2/M3-S prototypes. runner-identify/1 can identify an exited/unreaped child, not liveness. Controller claims are not resource/slot allocation. Host queue records durable; runner protocol-3/write-receipt-1 receipts volatile within retained incarnation. M2 restoration retains the same runner/native session. Hold cannot retract an already issued write. Current Codex descriptor 0.164.0 TokenUsage disabled; r8 usage/mute/broker and general cross-model restore not implemented. | Proposed production WorkerState/Claim/Broker/Apply/usage ports remain unqualified. No missing receipt licenses replay. |
 | Curator core 12b2d57e4b349a93eb3624709b48cdb3ee994d6c; launcher 8ab9cb30735a159589649d32c6544f3b99ebec3a | Profile list/resolve/environment fragments and status diagnostics are not exact executor catalogs, liveness or readiness. Preserve-lock repair dry-run is materialization planning. Actual run is effectful and may provision/repair. Required-manager refusal terminal. Stage1 has zero admitted positive native tuples; one-shot exec and pending common-v1 return unavailable. Last observed installed v0.15.0-rc9 is historical, not a fresh probe. | No generic launch/readiness tuple or local installed pair inferred; exact translation and qualification remain required. |
-| Pulse b226d861a91de7cd767d64ba8f7b23e4fa9bd464 | Static product-card/v4 validator/converter and desired-change checker, no accepted schedule/occurrence/DST/consumption/idempotency/status interface or live publisher. Candidate02 future v5 identity/source/caller/view design adds no scheduling; proposed member query unshipped. | Corrects the earlier broad scheduling owner map. ScheduleSource is proposed/unqualified; actual schedule custodian not established. This source-local absence is not fleet-wide absence. |
+| Pulse b226d861a91de7cd767d64ba8f7b23e4fa9bd464 | Static product-card/v4 validator/converter and desired-change checker, no accepted schedule/occurrence/DST/consumption/idempotency/status interface or live publisher. Proposed v5 identity/source/caller/view design adds no scheduling; proposed member query unshipped. | ScheduleSource is proposed/unqualified; actual schedule custodian not established. This source-local absence is not fleet-wide absence. |
 
 | Key | Actual authority needed | Remaining own-domain integration question / bounded answer | Effect until qualified |
 | --- | --- | --- | --- |
@@ -412,4 +412,4 @@ This is a proposed own-domain contract; documentation readiness and live qualifi
 
 Each answer must name an authoritative contract/version and supported capability or explicitly unknown/unavailable. Advice, source pins, an installed version and a sent request are not source-owner admission. No foreign board/source is edited, new staffing introduced or implementation required here.
 
-The accompanying unresolved-question record tracks these same keys; it is not a second specification. Future skill work remains dependent on this interface task, and publication/adoption requires its actual reviewed route. This draft may receive a consolidated revision after whole-contract review or material counterpart answers; frozen review candidates keep their own paths/digests.
+U01–U11 identify qualification gaps for future adapters. Implementations must bind an authoritative counterpart contract and demonstrate the required conformance before live use; source pins and documentation alone cannot satisfy that boundary.

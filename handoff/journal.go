@@ -103,8 +103,13 @@ func openJournal(dir string, syncFile func(*os.File) error) (Journal, error) {
 			return nil, err
 		}
 	}
-	info, err := os.Lstat(abs)
-	if err != nil || !info.IsDir() || !ownedPrivate(info) {
+	directory, err := os.OpenFile(abs, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer directory.Close()
+	info, err := directory.Stat()
+	if err != nil || !info.IsDir() || !ownedPrivate(info, directory) {
 		return nil, errors.New("journal must be an owned private directory")
 	}
 	lock, err := os.OpenFile(filepath.Join(abs, ".lock"), os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW, 0600)
@@ -112,7 +117,7 @@ func openJournal(dir string, syncFile func(*os.File) error) (Journal, error) {
 		return nil, err
 	}
 	info, err = lock.Stat()
-	if err != nil || !info.Mode().IsRegular() || !ownedPrivate(info) {
+	if err != nil || !info.Mode().IsRegular() || !ownedPrivate(info, lock) {
 		lock.Close()
 		return nil, errors.New("invalid journal lock")
 	}
@@ -142,9 +147,9 @@ func syncDirectory(path string, syncFile func(*os.File) error) error {
 	return closeErr
 }
 
-func ownedPrivate(info os.FileInfo) bool {
+func ownedPrivate(info os.FileInfo, f *os.File) bool {
 	st, ok := info.Sys().(*syscall.Stat_t)
-	return ok && st.Uid == uint32(os.Getuid()) && info.Mode().Perm()&0077 == 0
+	return ok && st.Uid == uint32(os.Getuid()) && info.Mode().Perm()&0077 == 0 && noExtendedACL(f)
 }
 
 // ReadFile bounds file intake, refuses symlinks and optionally requires private custody.
@@ -155,7 +160,7 @@ func ReadFile(path string, private bool) ([]byte, error) {
 	}
 	defer f.Close()
 	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() > FileLimit || (private && !ownedPrivate(info)) {
+	if err != nil || !info.Mode().IsRegular() || info.Size() > FileLimit || (private && !ownedPrivate(info, f)) {
 		return nil, errors.New("invalid input file")
 	}
 	b, err := io.ReadAll(io.LimitReader(f, FileLimit+1))
@@ -227,7 +232,7 @@ func (j *fileJournal) Sync(key string) error {
 		return err
 	}
 	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || !ownedPrivate(info) || info.Size() > FileLimit {
+	if err != nil || !info.Mode().IsRegular() || !ownedPrivate(info, f) || info.Size() > FileLimit {
 		f.Close()
 		return errors.New("invalid receipt for durability confirmation")
 	}

@@ -53,11 +53,11 @@ The separate local policy has exactly these fields, with a nonempty allowlist:
 }
 ```
 
-Replace illustrative values using independently verified actual references. Copy the exact native task title, including its existing ID prefix; do not derive a friendlier title from the task ID. Bind the actual project root, local board storage, server, sender, room ID, topic, reply event and allowed task/member. Use the current caller's identity only; no token, environment override, free-form task body, command or secret is accepted in the request. The policy is operator-controlled local admission, not cryptographic authority or proof of assignment. Keep it owned by the current user, mode0600, in trusted custody.
+Replace illustrative values using independently verified actual references. Copy the exact native task title, including its existing ID prefix; do not derive a friendlier title from the task ID. Bind the actual project root, local board storage, server, sender, room ID, topic, reply event and allowed task/member. Use the current caller's identity only; no token, environment override, free-form task body, command or secret is accepted in the request. The policy is operator-controlled local admission, not cryptographic authority or proof of assignment. Keep it owned by the current user, mode 0600, in trusted custody.
 
 The MVP's `sender` and `member` fields are local account names, bound to the policy's single exact server when checking membership. They do not accept a full federated MXID. Do not strip a foreign homeserver or treat equal local names on different servers as the same recipient; a federated destination needs a separately supported contract/admission.
 
-Both JSON files are limited to64KiB. Unknown/duplicate keys, case aliases and trailing JSON are rejected. The policy allows at most256 tasks and64 distinct recipients per task. These constraints do not make fictitious references valid. Required source checks verify the actual board/task/title, complete joined caller/recipient membership, server and room identity, and the existing reply event's room/topic/joined sender.
+Both JSON files are limited to 64 KiB. Unknown/duplicate keys, case aliases and trailing JSON are rejected. The policy allows at most 256 tasks and 64 distinct recipients per task. These constraints do not make fictitious references valid. Required source checks verify the actual board/task/title, complete joined caller/recipient membership, server and room identity, and the existing reply event's room/topic/joined sender.
 
 ## Plan before the separately authorized dispatch
 
@@ -71,7 +71,7 @@ JOURNAL=/absolute/existing/parent/task-handoff-journal
 "$ROUTER_MVP" --request "$REQUEST_PLAN" --policy "$POLICY" --journal "$JOURNAL"
 ```
 
-`plan` checks sources and returns the proposed notice with `planned`, exit0. It creates no journal and posts nothing. A successful plan does not reserve capacity, freeze source state or authorize the dispatch. Before dispatch, obtain the applicable authorization for this exact recipient/task/destination if not already given; do not ask again when it already covers the operation.
+`plan` checks sources and returns the proposed notice with `planned`, exit 0. It creates no journal and posts nothing. A successful plan does not reserve capacity, freeze source state or authorize the dispatch. Before dispatch, obtain the applicable authorization for this exact recipient/task/destination if not already given; do not ask again when it already covers the operation.
 
 Prepare a separate complete request file by changing only `action` to `dispatch`, preserving the intended correlation and all other fields. Do not pass `--action`, `--force`, `--retry` or a full Router operation envelope; those are not supported. The next command is the effectful step, executed only inside the admitted scope/window:
 
@@ -92,7 +92,7 @@ The journal parent must already exist at a real path without symlink ancestors. 
 | `conflict` | 2 | Same correlation belongs to a different request/policy. Existing intent is preserved; do not bypass it with a new key. |
 | `unknown` | 3 | A post may have happened. Preserve the journal, same correlation and any known event ID for reconciliation. Do not dispatch again blindly. |
 
-The result includes `contract`, `status`, `correlation_id`, plus `event_id`, `notice` and bounded `reason` when applicable. Empty/malformed output, an interrupted caller or an unknown exit does not prove no send. Native subprocess deadlines are30s each, with bounded stdout/stderr; a caller timeout ends waiting, not the published effect.
+The result includes `contract`, `status`, `correlation_id`, plus `event_id`, `notice` and bounded `reason` when applicable. Empty/malformed output, an interrupted caller or an unknown exit does not prove no send. Native subprocess deadlines are 30s each, with bounded stdout/stderr; a caller timeout ends waiting, not the published effect.
 
 A matching verified replay confirms receipt durability and returns the **historical same event** without reposting or making new source checks. It is not fresh membership, permission or current task-state evidence. Replaying an unresolved intent with no saved event remains unknown and does not post. With a durably saved event, matching reconciliation may read that event and complete verification without reposting. A durability/readback failure remains unknown, retaining any known event ID. Use a supported replay/reconciliation only when that actual diagnostic invocation is authorized; it is not a general retry instruction.
 
@@ -116,3 +116,18 @@ These are review scenarios grounded in the implemented MVP contract, not newly e
 | Lost post/readback | A complete exact event readback can establish queued_notification. | A post whose result/readback is lost stays unknown; no second post, invented no-send or recipient acceptance. |
 | Interrupted durability | Successful parent/record sync allows the normal once-post and historical receipt paths. | Visible journal creation or verified-file rename after failed sync does not alone establish durability or cached success. Preserve unknown/known event on receipt-sync failure. |
 | Scope of successful use | Queued event plus independent recipient acknowledgement establishes those two facts for that tuple. | No automatic assignment/claim/launch/liveness/work-completion or full Router conformance can be inferred. |
+
+## Immutable policies and custody
+
+Keep an immutable private policy snapshot for each task and authorization revision, and retain the
+original dispatch request beside it. New tasks get new policy files and reuse the same journal.
+The contract intentionally hashes the whole policy: adding an unrelated task changes the intent,
+including for records with a known event that still require reconciliation. Supply the original
+policy to reconcile; never erase a record, invent a new key or change journals to bypass conflict.
+No implicit receipt migration occurs in this implementation revision.
+
+On macOS, extended ACLs on policy/journal/lock/receipt objects are refused, including objects whose
+mode bits are 0600/0700. Keep ancestors under trusted custody as well as free of symlinks. JSON
+nesting is limited to 64 containers, and notice text rejects controls, format characters, Unicode
+line/paragraph separators, private-use characters, surrogates and noncharacters. Missing or malformed
+result JSON is uncertainty even if the native process exit happens to be 2.

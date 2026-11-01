@@ -37,6 +37,11 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 		{"wrong-reply-topic", "reply_binding_mismatch"}, {"wrong-reply-id", "reply_binding_mismatch"},
 		{"reply-absent", "reply_unavailable"}, {"reply-sender", "reply_sender_not_joined"},
 		{"read-timeout", "reply_unavailable"},
+		{"configured-remote", "board_authority_not_local"}, {"project-root", "board_authority_not_local"},
+		{"remote-active", "board_authority_not_local"}, {"remote-override", "board_authority_not_local"},
+		{"second-binding-drift", "task_source_unavailable"}, {"wrong-filter", "membership_binding_mismatch"},
+		{"invited-member", "membership_binding_mismatch"}, {"duplicate-member", "membership_binding_mismatch"},
+		{"wrong-reply-type", "reply_binding_mismatch"}, {"wrong-reply-room", "reply_binding_mismatch"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.plant, func(t *testing.T) {
@@ -51,6 +56,20 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 						t.Fatal("unsafe board wire", args)
 					}
 					cfg := localConfig(p)
+					switch tc.plant {
+					case "configured-remote":
+						cfg["configured_mode"] = "remote"
+					case "project-root":
+						cfg["project_root"] = "/another"
+					case "remote-active":
+						cfg["remote"] = map[string]any{"active": true}
+					case "remote-override":
+						cfg["explicit_remote_override"] = true
+					case "second-binding-drift":
+						if args[5] != "project_config()" {
+							cfg["configured_mode"] = "remote"
+						}
+					}
 					if tc.plant == "unrelated-metadata" {
 						cfg["unrelated"] = map[string]any{"Action": "metadata", "nested": []any{1, true}}
 					}
@@ -102,6 +121,12 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 						t.Fatal(args)
 					}
 					members := []map[string]string{{"user_id": "@caller:example.test", "membership": "join"}, {"user_id": "@recipient:example.test", "membership": "join"}, {"user_id": "@author:example.test", "membership": "join"}}
+					if tc.plant == "invited-member" {
+						members[1]["membership"] = "invite"
+					}
+					if tc.plant == "duplicate-member" {
+						members = append(members, members[1])
+					}
 					if tc.plant == "member-alias" {
 						delete(members[0], "user_id")
 						members[0]["User_ID"] = "@caller:example.test"
@@ -113,6 +138,9 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 						members = append(members[:1], members[2:]...)
 					}
 					v := map[string]any{"type": "room-members", "room_id": p.RoomID, "caller": "@caller:example.test", "membership_filter": "join", "completeness": "complete-response", "members": members}
+					if tc.plant == "wrong-filter" {
+						v["membership_filter"] = "join,invite"
+					}
 					if tc.plant == "wrong-caller" {
 						v["caller"] = "@other:example.test"
 					}
@@ -137,6 +165,10 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 				v := map[string]any{"type": "message", "event_id": args[3], "room_id": p.RoomID, "sender": "author", "topic": r.Topic}
 				if args[3] == r.ReplyTo {
 					switch tc.plant {
+					case "wrong-reply-type":
+						v["type"] = "topic"
+					case "wrong-reply-room":
+						v["room_id"] = "!other"
 					case "wrong-reply-topic":
 						v["topic"] = "other"
 					case "wrong-reply-id":
@@ -236,9 +268,8 @@ func TestClosedJSON(t *testing.T) {
 		append(append([]byte(nil), valid...), []byte(` {}`)...),
 		append([]byte(`{"action":"launch",`), valid[1:]...),
 		append([]byte(`{"execute":"arbitrary",`), valid[1:]...),
-		[]byte(`{"tasks":[{"id":"a","id":"b"}]}`),
-		[]byte(strings.Repeat(" ", 2*1024*1024+1)),
-		{0xff},
+		append(valid, []byte(strings.Repeat(" ", 2*1024*1024-len(valid)+1))...),
+		[]byte(strings.Replace(string(valid), "Example task", "Example "+string([]byte{0xff})+" task", 1)),
 	} {
 		var got Request
 		if Decode(b, &got) == nil {

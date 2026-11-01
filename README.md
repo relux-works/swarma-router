@@ -6,8 +6,8 @@ the usage thresholds, the schedule of desired runs and the preferences by projec
 or vendor switch resets the context, and it recommends whether to keep the worker as it is or move it to a simpler or
 a stronger model, with lower or higher reasoning. Managers assign tasks through it and adapt their workers at runtime.
 
-It is an independent module. It connects to the model catalog, the session host's usage events, the board and the
-product cards through plugin seams, not hard wiring.
+The target design is an independent module connecting to the model catalog, the session host's usage events,
+the board and product cards through plugin seams. The MVP currently links one combined CLI adapter.
 
 Status: the full routing/classification interface remains a design. The reduced
 `queued-task-handoff/0.1.0` Go implementation posts an explicitly authorized task notice.
@@ -39,7 +39,9 @@ GOTOOLCHAIN=local GOPROXY=off go vet ./...
 Copy the two files in `examples/queued-handoff/` to an ignored local directory. They contain
 illustrative references and will refuse until you supply actual admitted values. The policy is an
 operator-controlled local authorization file. Keep it owned by the current user with no group or
-other access (`chmod 600 POLICY.json`). Admit only nonsecret task titles/references intended for the
+other access (`chmod 600 POLICY.json`). On macOS, extended ACLs on the policy, journal, lock
+or receipt are refused even with private mode bits. Ancestors must remain in trusted custody;
+permissions and path checks do not protect against a hostile same-user process swapping paths. Admit only nonsecret task titles/references intended for the
 selected room. No free-form task body, commands, credentials or identity override is accepted.
 
 The policy binds:
@@ -78,11 +80,14 @@ Keep one journal directory for the lifetime of these correlation IDs.
 | `conflict` | 2 | Correlation ID already belongs to a different intent/policy; no new post. |
 | `unknown` | 3 | An existing/new attempt may have posted; no safe conclusion about delivery. |
 
-Every result carries `contract`, `status` and `correlation_id`; `event_id`, `notice` and a bounded
+Every JSON result carries `contract`, `status` and `correlation_id` (empty when intake fails before
+correlation validation); `event_id`, `notice` and a bounded
 `reason` appear when applicable. Native subprocess stdout/stderr is never echoed as an error.
 Closed JSON fields require their exact case-sensitive spelling, including nested objects.
 Open source projections allow unrelated metadata but reject aliases of recognized fields.
-Unknown/duplicate JSON keys and trailing values are rejected. Input/journal files are limited to
+Unknown/duplicate JSON keys, trailing values and nesting beyond 64 containers are rejected.
+Task titles reject control/format characters, line/paragraph separators, private-use characters,
+surrogates and Unicode noncharacters to prevent hidden or reordered notice fields. Input/journal files are limited to
 64KiB, policies to 256 tasks and 64 recipients per task. Each subprocess has a 30s deadline,
 2MiB stdout and 64KiB stderr limits. Pre-send failures refuse; post/readback ambiguity is unknown.
 
@@ -93,7 +98,18 @@ the existing historical receipt without sending, after confirming its file and d
 Every journal open syncs its parent, including recovery from an incomplete creation. A failed
 receipt durability confirmation remains unknown with its known event ID and never reposts.
 A changed request or policy under the same
-correlation conflicts. Historical replay is not fresh membership, authority or task-state evidence.
+correlation conflicts. Keep one immutable private policy snapshot per task and authorization revision;
+new tasks use new policy files with the same journal. Retain each original request and policy for
+replay and reconciliation. Even adding an unrelated task to an old allowlist changes its digest and
+blocks reconciliation until the original policy is supplied. There is no implicit digest migration.
+Historical replay is not fresh membership, authority or task-state evidence.
+
+If intent rename succeeds but directory sync fails, the original `refused` / `intent_not_durable`
+result establishes that invocation made no post. A later replay of its retained intent is conservatively
+`unknown`; keep the original result with the journal for external reconciliation.
+
+Missing/malformed CLI JSON or abnormal termination is not proof of refusal or no delivery, regardless
+of the numeric process exit. Preserve the journal and treat the invocation as uncertain.
 
 An intent without a returned event ID may represent a crash before the call or a successful send
 whose result was lost. Replaying it stays unknown and does not post. If an event ID was durably
@@ -120,7 +136,10 @@ recipient activity. No service restart, session stop, identity change or board m
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
 | a2a | Adapter uses `a2a room members ROOM --membership join --json`, `a2a read ROOM --event EVENT --json`, and explicit `a2a post ROOM --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
 
-Tests use an injected adapter/runner and isolated filesystem controls. They exercise intended
+The [implemented seam reference](agents/skills/swarma-router/references/plugins.md#implemented-mvp-seams)
+describes the Go interfaces and the exact CLI output expectations.
+
+Tests use injected adapters, real subprocess fixtures and isolated filesystem controls. They exercise intended
 refusals, message counts, locking, corruption, durability failures and post/readback loss. They do
 not establish actual peer delivery, source admission or callable full routing conformance.
 
