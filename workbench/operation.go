@@ -24,7 +24,7 @@ type Repository interface {
 // compares expected (empty means absent), and returns nil only after those exact
 // bytes and revision are durable. An error may mean committed-but-unacknowledged.
 // Close releases custody; it does not retract a commit. All methods honor ctx.
-// This package provides no disk implementation or claim of production durability.
+// FileRepository implements this port for an admitted private local directory.
 type Journal interface {
 	Read(context.Context) ([]byte, error)
 	Commit(context.Context, string, func(nextRevision string) ([]byte, error)) error

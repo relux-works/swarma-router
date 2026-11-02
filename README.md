@@ -27,9 +27,11 @@ it is a value codec, separate from lifecycle state. The
 [operation engine](docs/workbench-operation.md) reserves before source resolution,
 retains selection and lower mapping, and invokes Start at most once under an
 admitted serialized repository. Historical Prepare replay is inert; Status only
-observes the retained operation. Production storage, selection/source/launch
-adapters and a workbench CLI remain unimplemented. Isolated injected-port tests
-do not establish actual readiness, crash durability or a qualified live tuple.
+observes the retained operation. The [private local file repository](docs/workbench-file-repository.md)
+implements serialized, bounded, durable operation storage. Selection/source/launch
+adapters and a workbench CLI remain unimplemented. Isolated tests establish file
+and process-interruption behavior, not actual member readiness, machine power-loss
+behavior or a qualified live tuple.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
