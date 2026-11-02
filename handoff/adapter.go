@@ -88,7 +88,9 @@ func (a CLIAdapter) ValidateSources(ctx context.Context, r Request, p Policy) st
 	if task.ID != r.TaskID || task.Title != r.TaskTitle {
 		return "task_source_mismatch"
 	}
-	out, err = a.Runner.Run(ctx, p.ProjectRoot, "a2a", "room", "members", r.Room, "--membership", "join", "--json")
+	// Select the already pinned room directly; a logical slug may resolve on a
+	// different homeserver after account migration. Readbacks still bind its ID.
+	out, err = a.Runner.Run(ctx, p.ProjectRoot, "a2a", "room", "members", p.RoomID, "--membership", "join", "--json")
 	var members memberProjection
 	if err != nil || decode(out, &members, false) != nil {
 		return "membership_unavailable"
@@ -110,7 +112,7 @@ func (a CLIAdapter) ValidateSources(ctx context.Context, r Request, p Policy) st
 	if !seen["@"+r.Member+":"+p.Server] {
 		return "recipient_not_joined"
 	}
-	out, err = a.Runner.Run(ctx, p.ProjectRoot, "a2a", "read", r.Room, "--event", r.ReplyTo, "--json")
+	out, err = a.Runner.Run(ctx, p.ProjectRoot, "a2a", "read", p.RoomID, "--event", r.ReplyTo, "--json")
 	var reply message
 	if err != nil || decode(out, &reply, false) != nil {
 		return "reply_unavailable"
@@ -132,7 +134,7 @@ func (a CLIAdapter) Post(ctx context.Context, r Request, p Policy, body string) 
 	if a.Runner == nil {
 		return "", errors.New("adapter unavailable")
 	}
-	out, err := a.Runner.Run(ctx, p.ProjectRoot, "a2a", "post", r.Room, "--topic", r.Topic, "--kind", "notice", "--to", r.Member, "--re", r.ReplyTo, body)
+	out, err := a.Runner.Run(ctx, p.ProjectRoot, "a2a", "post", p.RoomID, "--topic", r.Topic, "--kind", "notice", "--to", r.Member, "--re", r.ReplyTo, body)
 	return strings.TrimSpace(string(out)), err
 }
 
@@ -140,7 +142,7 @@ func (a CLIAdapter) VerifyEvent(ctx context.Context, r Request, p Policy, id, bo
 	if a.Runner == nil {
 		return "event_readback_unavailable"
 	}
-	out, err := a.Runner.Run(ctx, p.ProjectRoot, "a2a", "read", r.Room, "--event", id, "--json")
+	out, err := a.Runner.Run(ctx, p.ProjectRoot, "a2a", "read", p.RoomID, "--event", id, "--json")
 	var event message
 	if err != nil || decode(out, &event, false) != nil {
 		return "event_readback_unavailable"

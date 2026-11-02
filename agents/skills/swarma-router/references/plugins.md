@@ -27,7 +27,9 @@ claim, lifecycle and operation ports. The MVP has none of those production capab
 The adapter requires JSON stdout from `task-board` for its explicit local configuration/task
 projections. Configuration must echo local configured/effective mode, exact project root and board
 directory, active local/inactive remote and no explicit remote override, checked again with the task
-projection. It requests `a2a room members ... --membership join --json` with complete joined rows and
+projection. All messaging calls select the policy's exact `room_id`; the logical `room` remains a
+request/policy binding and is not resolved as an alias on the caller's homeserver.
+It requests `a2a room members ... --membership join --json` with complete joined rows and
 exact caller/room identity. `a2a read ... --json` must return one `type=message` projection with the
 exact bindings. For the posted event the supported same-server sender format is the bare local
 name; federated sender normalization is not implemented. `a2a post` stdout must contain exactly one

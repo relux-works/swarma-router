@@ -60,6 +60,11 @@ and `TB_*` are scrubbed from that child's environment; each read specifies `--bo
 format. The caller must control the local configuration and trusted executable search path. This
 is not a boundary against an adversarial same-user process changing tools/configuration mid-call.
 
+The logical `room` remains part of the request/policy binding. Every messaging call selects the
+policy's exact `room_id`, so it does not depend on an alias existing on the caller's current
+homeserver. Membership and event readbacks must still return that exact ID. This selection does
+not change the wire schema, policy digest or historical receipt handling.
+
 Set request `action` explicitly to `plan` first:
 
 ```sh
@@ -134,7 +139,7 @@ recipient activity. No service restart, session stop, identity change or board m
 | Go | `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
 | gofmt | `gofmt -w handoff cmd/queued-task-handoff` | Formats Go source in place. |
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
-| a2a | Adapter uses `a2a room members ROOM --membership join --json`, `a2a read ROOM --event EVENT --json`, and explicit `a2a post ROOM --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
+| a2a | Adapter uses `a2a room members ROOM_ID --membership join --json`, `a2a read ROOM_ID --event EVENT --json`, and explicit `a2a post ROOM_ID --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
 
 The [implemented seam reference](agents/skills/swarma-router/references/plugins.md#implemented-mvp-seams)
 describes the Go interfaces and the exact CLI output expectations.

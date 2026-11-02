@@ -21,11 +21,13 @@ func localConfig(p Policy) map[string]any {
 	return map[string]any{"effective_mode": "local", "configured_mode": "local", "project_root": p.ProjectRoot, "explicit_remote_override": false, "local": map[string]any{"active": true, "board_dir": p.BoardDir}, "remote": map[string]any{"active": false}}
 }
 
-// The fake executes the supported CLI wire, not a second implementation of core
-// authority logic. Each planted source mismatch must prevent all post calls.
+// All four messaging calls use the policy's exact room ID, independently of
+// alias availability. The isolated valid controls cover opaque and server-qualified
+// IDs; every planted source mismatch prevents all post calls.
 func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 	cases := []struct{ plant, reason string }{
-		{"valid", ""}, {"remote", "board_authority_not_local"}, {"storage", "board_authority_not_local"},
+		{"valid", ""}, {"opaque-room-id", ""}, {"server-qualified-room-id", ""},
+		{"remote", "board_authority_not_local"}, {"storage", "board_authority_not_local"},
 		{"unrelated-metadata", ""}, {"board-alias-only", "board_authority_not_local"},
 		{"board-alias-shadow", "board_authority_not_local"}, {"nested-active-shadow", "board_authority_not_local"},
 		{"task-alias", "task_source_unavailable"}, {"member-alias", "membership_unavailable"},
@@ -46,6 +48,12 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.plant, func(t *testing.T) {
 			r, p := inputs()
+			switch tc.plant {
+			case "opaque-room-id":
+				p.RoomID = "!existing_Opaque-Room123"
+			case "server-qualified-room-id":
+				p.RoomID = "!existing:original.example"
+			}
 			posts := 0
 			runner := runnerFunc(func(_ context.Context, dir, name string, args ...string) ([]byte, error) {
 				if dir != p.ProjectRoot {
@@ -117,7 +125,7 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 					t.Fatal("unexpected tool", name)
 				}
 				if args[0] == "room" {
-					if !reflect.DeepEqual(args, []string{"room", "members", r.Room, "--membership", "join", "--json"}) {
+					if !reflect.DeepEqual(args, []string{"room", "members", p.RoomID, "--membership", "join", "--json"}) {
 						t.Fatal(args)
 					}
 					members := []map[string]string{{"user_id": "@caller:example.test", "membership": "join"}, {"user_id": "@recipient:example.test", "membership": "join"}, {"user_id": "@author:example.test", "membership": "join"}}
@@ -154,12 +162,12 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 				}
 				if args[0] == "post" {
 					posts++
-					if !reflect.DeepEqual(args, []string{"post", r.Room, "--topic", r.Topic, "--kind", "notice", "--to", r.Member, "--re", r.ReplyTo, notice(r)}) {
+					if !reflect.DeepEqual(args, []string{"post", p.RoomID, "--topic", r.Topic, "--kind", "notice", "--to", r.Member, "--re", r.ReplyTo, notice(r)}) {
 						t.Fatal("post wire", args)
 					}
 					return []byte("$sent\n"), nil
 				}
-				if args[0] != "read" || len(args) != 5 || args[1] != r.Room || args[2] != "--event" || args[4] != "--json" {
+				if args[0] != "read" || len(args) != 5 || args[1] != p.RoomID || args[2] != "--event" || args[4] != "--json" {
 					t.Fatal("read wire", args)
 				}
 				v := map[string]any{"type": "message", "event_id": args[3], "room_id": p.RoomID, "sender": "author", "topic": r.Topic}
