@@ -12,7 +12,10 @@ the board and product cards through plugin seams. The MVP currently links one co
 Status: the full routing/classification interface remains a design. The reduced
 `queued-task-handoff/0.1.0` Go implementation posts an explicitly authorized task notice.
 Qualification on 2026-10-31 covers one Darwin arm64 plan, dispatch, historical receipt replay
-and server-readback tuple. Automatic Route, Apply, model selection and launch remain unimplemented.
+and server-readback tuple. Automatic Route, Apply and model selection remain unimplemented.
+The separate `router-launch/0.1.0` Go library translates an explicitly admitted launch through
+a Curator plugin and retains one attempt. Its isolated tests do not qualify a live launch tuple.
+See [the launch API](docs/router-launch.md) for trusted admission, observation and recovery contracts.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
@@ -137,9 +140,12 @@ recipient activity. No service restart, session stop, identity change or board m
 | Tool | Use and entry point | Outputs |
 | --- | --- | --- |
 | Go | `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
-| gofmt | `gofmt -w handoff cmd/queued-task-handoff` | Formats Go source in place. |
+| gofmt | `gofmt -w handoff launch cmd/queued-task-handoff` | Formats Go source in place. |
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
 | a2a | Adapter uses `a2a room members ROOM_ID --membership join --json`, `a2a read ROOM_ID --event EVENT --json`, and explicit `a2a post ROOM_ID --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
+| Curator | Launch plugin prepares `curator run RUNTIME --native --profile PROFILE --model MODEL --effort EFFORT --permissions MODE` | Explicitly admitted member environment; launch attempt metadata. |
+| tmux | Launch backend uses `new-session`, filtered `list-sessions`, `show-environment` and `display-message` | One named session and bounded process metadata; no terminal input. |
+| ps / pgrep | Launch backend uses `ps -o pid= -o ppid= -o lstart= -o comm= -p PID` and `pgrep -P PID` | Bounded process ancestry and PID birth witnesses. |
 
 The [implemented seam reference](agents/skills/swarma-router/references/plugins.md#implemented-mvp-seams)
 describes the Go interfaces and the exact CLI output expectations.
@@ -147,6 +153,10 @@ describes the Go interfaces and the exact CLI output expectations.
 Tests use injected adapters, real subprocess fixtures and isolated filesystem controls. They exercise intended
 refusals, message counts, locking, corruption, durability failures and post/readback loss. They do
 not establish actual peer delivery, source admission or callable full routing conformance.
+
+Owner direction, 2026-11-02: «нужно встраивать лаунч систем или чо там по буку - диспатчер».
+The initial launch boundary uses Curator directly; an external dispatcher and a session-host plugin
+remain separate integrations.
 
 Owner direction, 2026-10-30: «да, нам нужен будет еще модуль который будет понимать чо за задача и какие модели каких
 вендоров доступны / так же будет иметь расписание желаемых запусков по времени - скедулинг / возможно предпочтения по
