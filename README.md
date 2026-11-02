@@ -21,6 +21,10 @@ The [module skill](agents/skills/swarma-router/SKILL.md) documents the implement
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
 retain their required validation and installation gates.
 
+The [deterministic selection component](docs/selection.md) proposes reuse or start
+from trusted normalized eligibility evidence. It has no production normalizer,
+source adapter, routing CLI or execution path; a proposal is not ready authority.
+
 ## Queued task handoff
 
 The local CLI validates an existing task and an explicit destination, saves a durable intent, posts
@@ -140,7 +144,7 @@ recipient activity. No service restart, session stop, identity change or board m
 | Tool | Use and entry point | Outputs |
 | --- | --- | --- |
 | Go | `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
-| gofmt | `gofmt -w handoff launch cmd/queued-task-handoff` | Formats Go source in place. |
+| gofmt | `gofmt -w handoff launch selection cmd/queued-task-handoff` | Formats Go source in place. |
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
 | a2a | Adapter uses `a2a room members ROOM_ID --membership join --json`, `a2a read ROOM_ID --event EVENT --json`, and explicit `a2a post ROOM_ID --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
 | Curator | Launch plugin prepares `curator run RUNTIME --native --profile PROFILE --model MODEL --effort EFFORT --permissions MODE` | Explicitly admitted member environment; launch attempt metadata. |
