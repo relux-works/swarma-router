@@ -1,0 +1,141 @@
+{
+  "contract": "router-host-inventory/0.1.0-draft.1",
+  "source_version": "fixture-source-1",
+  "trust_mode": "local_single_user_unverified",
+  "owner_binding_ref": "fixture-receipt",
+  "member": "fixture-member",
+  "project": "fixture-project",
+  "workbench": "fixture-workbench",
+  "execution": "fixture-execution",
+  "runner_instance": "fixture-runner",
+  "collected_at": "2026-11-02T13:00:00Z",
+  "coverage": "owned_execution_partial",
+  "facts": {
+    "controller_epoch": {
+      "known": true,
+      "value": "0",
+      "provenance": "source_state",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "native_thread": {
+      "known": true,
+      "value": "fixture-thread",
+      "provenance": "source_state",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "selected_adapter": {
+      "known": true,
+      "value": "codex",
+      "provenance": "configured",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "observed_release": {
+      "known": true,
+      "value": "0.164.0",
+      "provenance": "source_state",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "configured_vendor": {
+      "known": true,
+      "value": "openai",
+      "provenance": "configured",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "configured_model": {
+      "known": true,
+      "value": "gpt-6.1-sol",
+      "provenance": "configured",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "native_vendor": {
+      "known": true,
+      "value": "openai",
+      "provenance": "thread_start_confirmed",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "native_model": {
+      "known": true,
+      "value": "gpt-6.1-sol",
+      "provenance": "thread_start_confirmed",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "requested_effort": {
+      "known": true,
+      "value": "high",
+      "provenance": "configured",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "effective_effort": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "profile": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "profile_lock": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "placement": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "native_activity": {
+      "known": true,
+      "value": "idle",
+      "provenance": "source_state",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "current_turn": {
+      "known": false,
+      "reason": "not-observed"
+    },
+    "input_state": {
+      "known": true,
+      "value": "idle",
+      "provenance": "source_state",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "security_stopped": {
+      "known": true,
+      "value": false,
+      "provenance": "source_state",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "stop_requested": {
+      "known": true,
+      "value": false,
+      "provenance": "source_state",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "fence": {
+      "known": true,
+      "value": "open",
+      "provenance": "source_state",
+      "source_observed_at": null,
+      "source_expires_at": null
+    },
+    "messaging_binding": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "readiness": {
+      "known": false,
+      "reason": "not-exposed"
+    }
+  }
+}

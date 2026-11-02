@@ -1,0 +1,99 @@
+{
+  "contract": "router-host-inventory/0.1.0-draft.1",
+  "source_version": "fixture-source-1",
+  "trust_mode": "local_single_user_unverified",
+  "owner_binding_ref": "fixture-receipt",
+  "member": "fixture-member",
+  "project": "fixture-project",
+  "workbench": "fixture-workbench",
+  "execution": "fixture-execution",
+  "runner_instance": "fixture-runner",
+  "collected_at": "2026-11-02T13:00:00Z",
+  "coverage": "owned_execution_partial",
+  "facts": {
+    "controller_epoch": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "native_thread": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "selected_adapter": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "observed_release": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "configured_vendor": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "configured_model": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "native_vendor": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "native_model": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "requested_effort": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "effective_effort": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "profile": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "profile_lock": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "placement": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "native_activity": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "current_turn": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "input_state": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "security_stopped": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "stop_requested": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "fence": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "messaging_binding": {
+      "known": false,
+      "reason": "not-exposed"
+    },
+    "readiness": {
+      "known": false,
+      "reason": "not-exposed"
+    }
+  }
+}

@@ -16,6 +16,9 @@ and server-readback tuple. Automatic Route, Apply and model selection remain uni
 The separate `router-launch/0.1.0` Go library translates an explicitly admitted launch through
 a Curator plugin and retains one attempt. Its isolated tests do not qualify a live launch tuple.
 See [the launch API](docs/router-launch.md) for trusted admission, observation and recovery contracts.
+The [owned inventory DATA consumer](docs/owned-inventory.md) validates a bounded
+partial execution projection through a trusted owner source seam. It supplies no
+production Host export, routing CLI, caller authentication or readiness evidence.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
