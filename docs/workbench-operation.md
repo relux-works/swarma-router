@@ -10,10 +10,13 @@ This is an injected-port component. The [source planner](workbench-source-planne
 normalizes trusted owner inputs and binds the deterministic selector to the full
 request. The [lower lifecycle adapter](workbench-lower-lifecycle.md) uses the
 existing launch library with a separate upper witness. Production receipt
-acquisition, complete repository/runtime wiring and a CLI remain the embedding's
-responsibility. Engine tests use a serialized memory
-fixture and controlled source/lifecycle ports. They do not establish disk crash
-durability, source authenticity, a live launch, or readiness of an actual member.
+acquisition, complete runtime wiring and a CLI remain the embedding's
+responsibility. The [file repository](workbench-file-repository.md) implements
+private local storage; [combined docking tests](workbench-docking.md) exercise
+both upper and lower file stores with the source planner and lifecycle adapter.
+Engine unit tests also use a serialized memory fixture and controlled ports.
+These checks do not establish machine power-loss durability, source authenticity,
+a live launch, or readiness of an actual member.
 The already released notice and lower launch contracts, binaries and journals
 are separate and unchanged.
 

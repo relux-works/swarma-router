@@ -35,8 +35,11 @@ selecting an alternative. The [lower lifecycle adapter](docs/workbench-lower-lif
 binds the retained operation to the existing launch library and checks a separate
 upper readiness witness. Actual owner-receipt acquisition, complete runtime
 wiring and a workbench CLI remain unimplemented here. Isolated injected-port
-tests do not establish actual readiness or a qualified live tuple. The separate
-private storage component retains its own implementation and validation scope.
+tests do not establish actual readiness or a qualified live tuple. The
+[private file repository](docs/workbench-file-repository.md) implements the upper
+storage port. [Combined docking tests](docs/workbench-docking.md) exercise these
+components with the existing lower file store and Curator plugin; actual owner,
+backend and readiness facts remain isolated fixtures.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
