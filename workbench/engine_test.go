@@ -31,6 +31,8 @@ type operationFixture struct {
 	observation                                                                             func(View) Observation
 	onResolve                                                                               func()
 	onStart                                                                                 func(View)
+	onCommit                                                                                func(operationRecord)
+	onClose                                                                                 func()
 	states                                                                                  []string
 	now                                                                                     time.Time
 }
@@ -44,7 +46,13 @@ func (f *operationFixture) Open(_ context.Context, key OperationKey) (Journal, e
 	f.key = key
 	return fixtureJournal{f}, nil
 }
-func (j fixtureJournal) Close() error { j.f.mu.Unlock(); return j.f.closeErr }
+func (j fixtureJournal) Close() error {
+	if j.f.onClose != nil {
+		j.f.onClose()
+	}
+	j.f.mu.Unlock()
+	return j.f.closeErr
+}
 func (j fixtureJournal) Read(context.Context) ([]byte, error) {
 	return bytes.Clone(j.f.raw), j.f.readErr
 }
@@ -78,6 +86,9 @@ func (j fixtureJournal) Commit(_ context.Context, expected string, build func(st
 		f.t.Fatal("fixture received invalid committed record")
 	}
 	f.states = append(f.states, r.Phase)
+	if f.onCommit != nil {
+		f.onCommit(r)
+	}
 	if f.failAt == f.commits && f.failMode == "after" {
 		return errors.New("injected lost commit acknowledgement")
 	}

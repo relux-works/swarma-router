@@ -110,6 +110,13 @@ conflict and pre-reservation errors exit 2. Historical ready never includes a
 ready binding. These results do not assign a task, post a message, prove acceptance
 or report completed work. The caller owns its separate current checks and actions.
 
+Fresh-ready output is checked again against the current clock and caller context
+after successful commit and custody release, immediately before returning it.
+If either observation/ready expiry has been reached or the caller was canceled,
+the result is same-key Recovery without a ready binding. The acknowledged record,
+revision and known execution identity remain intact; this check neither rewrites
+the record nor invokes a lifecycle action. Later matching Prepare stays historical.
+
 ## Validation
 
 Run `go test ./workbench`, `go test ./...`, `go vet ./...` and

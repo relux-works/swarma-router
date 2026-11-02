@@ -34,11 +34,26 @@ func (e Engine) Run(ctx context.Context, req Request) (out Output, runErr error)
 		return e.recovery(req, "store_unavailable", RetainedRequest{}, operationRecord{}), nil
 	}
 	op := operation{engine: e, journal: j, request: req}
-	// Failed release does not revoke a commit, but it is still an operational
-	// failure. Preserve confirmed references and report recovery without retry.
+	// Commit and Close may consume the witness's remaining validity or caller
+	// deadline. Recheck after both ports, immediately before returning fresh ready.
+	// Recovery preserves acknowledged bytes/identity and performs no extra write.
 	defer func() {
 		if j.Close() != nil {
 			out = op.recovery("store_unavailable")
+			return
+		}
+		if out.ExitCode() != 0 {
+			return
+		}
+		if e.Clock == nil || op.record.LastObservation == nil {
+			out = op.recovery("observation_unresolved")
+			return
+		}
+		now := e.Clock()
+		if ctx.Err() != nil {
+			out = op.recovery("authority_unknown")
+		} else if !observationFresh(*op.record.LastObservation, now) {
+			out = op.recovery("readiness_expired")
 		}
 	}()
 	raw, err := j.Read(ctx)
