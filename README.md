@@ -22,6 +22,9 @@ The separate pure `workbench` package parses the explicit-effort local
 Prepare identity. It checks recovery echo capacity before any operation can be
 opened. See [the request boundary](docs/workbench-wire.md); operation storage,
 selection integration, source adapters and a workbench CLI remain unimplemented.
+Its [retained request binding](docs/workbench-retained-request.md) validates the
+original canonical request and lookup tuple separately from lifecycle state;
+it is a value codec, not a durable store or operation engine.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
