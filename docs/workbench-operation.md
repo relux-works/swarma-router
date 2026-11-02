@@ -8,8 +8,10 @@ The library starts no goroutine, watchdog, process, session or retry loop.
 
 This is an injected-port component. The [source planner](workbench-source-planner.md)
 normalizes trusted owner inputs and binds the deterministic selector to the full
-request. Production receipt acquisition, repository/lifecycle wiring and a CLI
-remain the embedding's responsibility. Engine tests use a serialized memory
+request. The [lower lifecycle adapter](workbench-lower-lifecycle.md) uses the
+existing launch library with a separate upper witness. Production receipt
+acquisition, complete repository/runtime wiring and a CLI remain the embedding's
+responsibility. Engine tests use a serialized memory
 fixture and controlled source/lifecycle ports. They do not establish disk crash
 durability, source authenticity, a live launch, or readiness of an actual member.
 The already released notice and lower launch contracts, binaries and journals

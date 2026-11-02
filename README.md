@@ -31,7 +31,9 @@ observes the retained operation. The [source planner](docs/workbench-source-plan
 normalizes admitted owner receipts and optional [owned inventory](docs/owned-inventory.md)
 through the [deterministic selector](docs/selection.md), retaining complete source
 and configuration bindings. Revalidation checks the original target without
-selecting an alternative. Actual owner-reader acquisition, lower lifecycle
+selecting an alternative. The [lower lifecycle adapter](docs/workbench-lower-lifecycle.md)
+binds the retained operation to the existing launch library and checks a separate
+upper readiness witness. Actual owner-receipt acquisition, complete runtime
 wiring and a workbench CLI remain unimplemented here. Isolated injected-port
 tests do not establish actual readiness or a qualified live tuple. The separate
 private storage component retains its own implementation and validation scope.
