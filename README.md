@@ -17,14 +17,19 @@ The separate `router-launch/0.1.0` Go library translates an explicitly admitted 
 a Curator plugin and retains one attempt. Its isolated tests do not qualify a live launch tuple.
 See [the launch API](docs/router-launch.md) for trusted admission, observation and recovery contracts.
 
-The separate pure `workbench` package parses the explicit-effort local
+The separate `workbench` package parses the explicit-effort local
 `swarma-router/0.2.0-draft.2` Prepare/Status request subset and computes canonical
 Prepare identity. It checks recovery echo capacity before any operation can be
-opened. See [the request boundary](docs/workbench-wire.md); operation storage,
-selection integration, source adapters and a workbench CLI remain unimplemented.
+opened. See [the request boundary](docs/workbench-wire.md).
 Its [retained request binding](docs/workbench-retained-request.md) validates the
 original canonical request and lookup tuple separately from lifecycle state;
-it is a value codec, not a durable store or operation engine.
+it is a value codec, separate from lifecycle state. The
+[operation engine](docs/workbench-operation.md) reserves before source resolution,
+retains selection and lower mapping, and invokes Start at most once under an
+admitted serialized repository. Historical Prepare replay is inert; Status only
+observes the retained operation. Production storage, selection/source/launch
+adapters and a workbench CLI remain unimplemented. Isolated injected-port tests
+do not establish actual readiness, crash durability or a qualified live tuple.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
