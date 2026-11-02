@@ -17,6 +17,12 @@ The separate `router-launch/0.1.0` Go library translates an explicitly admitted 
 a Curator plugin and retains one attempt. Its isolated tests do not qualify a live launch tuple.
 See [the launch API](docs/router-launch.md) for trusted admission, observation and recovery contracts.
 
+The separate pure `workbench` package parses the explicit-effort local
+`swarma-router/0.2.0-draft.2` Prepare/Status request subset and computes canonical
+Prepare identity. It checks recovery echo capacity before any operation can be
+opened. See [the request boundary](docs/workbench-wire.md); operation storage,
+selection integration, source adapters and a workbench CLI remain unimplemented.
+
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
 retain their required validation and installation gates.
@@ -140,7 +146,7 @@ recipient activity. No service restart, session stop, identity change or board m
 | Tool | Use and entry point | Outputs |
 | --- | --- | --- |
 | Go | `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
-| gofmt | `gofmt -w handoff launch cmd/queued-task-handoff` | Formats Go source in place. |
+| gofmt | `gofmt -w handoff launch workbench cmd/queued-task-handoff` | Formats Go source in place. |
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
 | a2a | Adapter uses `a2a room members ROOM_ID --membership join --json`, `a2a read ROOM_ID --event EVENT --json`, and explicit `a2a post ROOM_ID --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
 | Curator | Launch plugin prepares `curator run RUNTIME --native --profile PROFILE --model MODEL --effort EFFORT --permissions MODE` | Explicitly admitted member environment; launch attempt metadata. |
