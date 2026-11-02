@@ -6,12 +6,14 @@ The `workbench.Engine` Go library implements the same-operation portion of
 frame with `Output.ExitCode()`. A finite caller context deadline is required.
 The library starts no goroutine, watchdog, process, session or retry loop.
 
-This is an injected-port component. There is no production workbench repository,
-source normalizer, selection/launch adapter or CLI in this implementation. Tests
-use a serialized memory fixture and controlled source/lifecycle ports. They do
-not establish disk crash durability, source authenticity, a live launch, or
-readiness of an actual member. The already released notice and lower launch
-contracts, binaries and journals are separate and unchanged.
+This is an injected-port component. The [source planner](workbench-source-planner.md)
+normalizes trusted owner inputs and binds the deterministic selector to the full
+request. Production receipt acquisition, repository/lifecycle wiring and a CLI
+remain the embedding's responsibility. Engine tests use a serialized memory
+fixture and controlled source/lifecycle ports. They do not establish disk crash
+durability, source authenticity, a live launch, or readiness of an actual member.
+The already released notice and lower launch contracts, binaries and journals
+are separate and unchanged.
 
 ## Admitted ports
 

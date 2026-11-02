@@ -27,9 +27,14 @@ it is a value codec, separate from lifecycle state. The
 [operation engine](docs/workbench-operation.md) reserves before source resolution,
 retains selection and lower mapping, and invokes Start at most once under an
 admitted serialized repository. Historical Prepare replay is inert; Status only
-observes the retained operation. Production storage, selection/source/launch
-adapters and a workbench CLI remain unimplemented. Isolated injected-port tests
-do not establish actual readiness, crash durability or a qualified live tuple.
+observes the retained operation. The [source planner](docs/workbench-source-planner.md)
+normalizes admitted owner receipts and optional [owned inventory](docs/owned-inventory.md)
+through the [deterministic selector](docs/selection.md), retaining complete source
+and configuration bindings. Revalidation checks the original target without
+selecting an alternative. Actual owner-reader acquisition, lower lifecycle
+wiring and a workbench CLI remain unimplemented here. Isolated injected-port
+tests do not establish actual readiness or a qualified live tuple. The separate
+private storage component retains its own implementation and validation scope.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
@@ -154,7 +159,7 @@ recipient activity. No service restart, session stop, identity change or board m
 | Tool | Use and entry point | Outputs |
 | --- | --- | --- |
 | Go | `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
-| gofmt | `gofmt -w handoff launch workbench cmd/queued-task-handoff` | Formats Go source in place. |
+| gofmt | `gofmt -w handoff launch inventory selection workbench cmd/queued-task-handoff` | Formats Go source in place. |
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
 | a2a | Adapter uses `a2a room members ROOM_ID --membership join --json`, `a2a read ROOM_ID --event EVENT --json`, and explicit `a2a post ROOM_ID --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
 | Curator | Launch plugin prepares `curator run RUNTIME --native --profile PROFILE --model MODEL --effort EFFORT --permissions MODE` | Explicitly admitted member environment; launch attempt metadata. |
