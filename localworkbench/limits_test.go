@@ -295,3 +295,33 @@ func TestCanonicalTargetOrdering(t *testing.T) {
 		t.Fatalf("permutation changed canonical output: %v", err)
 	}
 }
+
+// Future evidence remains ineligible, but must still have canonical nullable
+// timestamps. Currentness cannot hide malformed schema behind UNKNOWN.
+func TestSourceTimeSchemaBeforeCurrentness(t *testing.T) {
+	for _, mutate := range []func(*Source){
+		func(s *Source) { s.ReadAt = now.Add(time.Second); s.ObservedAt = pointer(now.Add(time.Nanosecond)) },
+		func(s *Source) {
+			s.ReadAt = now.Add(time.Second)
+			s.ExpiresAt = pointer(now.Add(time.Minute + time.Nanosecond))
+		},
+		func(s *Source) { s.ObservedAt = pointer(now.Add(time.Second)); s.ExpiresAt = pointer(time.Time{}) },
+	} {
+		r, in := fixture("reuse")
+		mutate(gate(&in, "occupancy").Evidence.Source)
+		if o, err := run(r, in); err == nil || err.Error() != "source_conflict" || o.PreparedWorkbench != nil {
+			t.Fatalf("malformed future source schema accepted: %+v/%v", o, err)
+		}
+	}
+}
+
+// A well-formed future read is a valid UNKNOWN, not a schema error or eligibility.
+// This also controls the prior-source regression replay's positive direction.
+func TestCanonicalFutureEvidence(t *testing.T) {
+	r, in := fixture("reuse")
+	gate(&in, "occupancy").Evidence.Source.ReadAt = now.Add(time.Second)
+	o, err := run(r, in)
+	if err != nil || o.Action != "insufficient_evidence" || o.PreparedWorkbench != nil || o.Selected != nil {
+		t.Fatalf("valid future evidence: %+v/%v", o, err)
+	}
+}

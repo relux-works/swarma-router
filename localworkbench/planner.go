@@ -334,24 +334,17 @@ func source(s Source, g string, now time.Time) (string, string, error) {
 	if !contains(allowed[g], s.Kind) || !ref(s.Locator) || !hashString(s.ContentSHA256) || !instant(s.ReadAt) {
 		return "", "", failure("source_conflict")
 	}
-	if s.ReadAt.After(now) {
+	if s.ObservedAt != nil && !instant(*s.ObservedAt) {
+		return "", "", failure("source_conflict")
+	}
+	if s.ExpiresAt != nil && (!instant(*s.ExpiresAt) || s.ObservedAt != nil && !s.ObservedAt.Before(*s.ExpiresAt)) {
+		return "", "", failure("source_conflict")
+	}
+	if s.ReadAt.After(now) || s.ObservedAt != nil && s.ObservedAt.After(s.ReadAt) {
 		return "unknown", "future", nil
 	}
-	if s.ObservedAt != nil {
-		if !instant(*s.ObservedAt) {
-			return "", "", failure("source_conflict")
-		}
-		if s.ObservedAt.After(s.ReadAt) {
-			return "unknown", "future", nil
-		}
-	}
-	if s.ExpiresAt != nil {
-		if !instant(*s.ExpiresAt) || s.ObservedAt != nil && !s.ObservedAt.Before(*s.ExpiresAt) {
-			return "", "", failure("source_conflict")
-		}
-		if !now.Before(*s.ExpiresAt) {
-			return "unknown", "expired", nil
-		}
+	if s.ExpiresAt != nil && !now.Before(*s.ExpiresAt) {
+		return "unknown", "expired", nil
 	}
 	// A source's admitted acquisition/currentness contract must also be checked
 	// by the reader. No default TTL or collection-derived expiry is invented.
