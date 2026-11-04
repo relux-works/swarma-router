@@ -48,6 +48,10 @@ cache with `go mod download` before offline builds. The
 [partial task facts source](docs/workbench-task-facts.md) observes one admitted
 local board task through the supported CLI; its four facts and byte digest do
 not supply a positive owner receipt, eligibility or runtime readiness.
+The [partial self-card source](docs/workbench-self-card-facts.md) reads one
+admitted Pulse self query and returns four desired self declarations with its
+source byte hash. It supplies no current ownership, installed configuration or
+runtime authority.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
@@ -174,6 +178,7 @@ recipient activity. No service restart, session stop, identity change or board m
 | Go | `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
 | gofmt | `gofmt -w handoff launch inventory selection workbench cmd/queued-task-handoff` | Formats Go source in place. |
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
+| Pulse | Self-card adapter uses `PULSE_ABS me --local-unsigned --card CARD_ABS --revision sha256:PIN --format json` with an admitted executable/card and unchanged actual caller | Read-only self declarations; isolated validation logs under `.temp/`. |
 | a2a | Adapter uses `a2a room members ROOM_ID --membership join --json`, `a2a read ROOM_ID --event EVENT --json`, and explicit `a2a post ROOM_ID --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
 | Curator | Launch plugin prepares `curator run RUNTIME --native --profile PROFILE --model MODEL --effort EFFORT --permissions MODE` | Explicitly admitted member environment; launch attempt metadata. |
 | tmux | Launch backend uses `new-session`, filtered `list-sessions`, `show-environment` and `display-message` | One named session and bounded process metadata; no terminal input. |
