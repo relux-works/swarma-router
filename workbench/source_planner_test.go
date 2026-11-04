@@ -378,6 +378,7 @@ func TestSourcePlannerInventoryBoundary(t *testing.T) {
 			payload := frame(t, m)
 			hostCalls := 0
 			expected := inventory.Binding{SourceVersions: []string{m["source_version"].(string)}, OwnerBindingRef: m["owner_binding_ref"].(string), Member: b.OwnerMember, Project: b.OwnerProject, Workbench: b.Workbench, Execution: m["execution"].(string), RunnerInstance: m["runner_instance"].(string)}
+			b.Execution = plannerHostExecution(expected)
 			if mode == "binding-conflict" {
 				m["execution"] = "another"
 				payload = frame(t, m)

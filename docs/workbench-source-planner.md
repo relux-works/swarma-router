@@ -44,8 +44,19 @@ Configured values and last-thread-start confirmation remain their actual narrow
 facts. Unknown effective effort/readiness/messaging remain unknown. Host activity,
 idle state, missing rows or partial coverage never create stopped/ready evidence.
 Failed/conflicting requested Host data cannot supply an action gate. A known
-configuration contradiction excludes reuse; an unrelated historical configured
-value does not by itself override separately established stopped absence.
+configuration contradiction or known true `security_stopped` / `stop_requested`
+fact excludes reuse. False or unknown stop facts do not establish readiness;
+separate qualified owner evidence remains necessary. An unrelated historical
+configured value or stop-intent fact does not by itself override separately
+established stopped absence.
+
+When the target has a known Host execution, the admitted Host binding must name
+that exact `execution` and `runner_instance`; a mismatch refuses before reading
+the source. The a2a execution union has no comparable Host-native identifiers.
+An a2a-ready target with requested Host data therefore remains unknown unless
+the data already conflicts; no native-to-messaging identity link is invented.
+Qualified a2a reuse without requested Host data remains supported. A stopped
+target has no current execution to compare with a historical Host row.
 
 This reader's coverage remains partial. Independently qualified positive absence
 can permit a specific start without claiming fleet completeness. A source's
@@ -83,6 +94,7 @@ Run `go test ./workbench -run '^TestSourcePlanner' -count=1`, `go test ./...`,
 `go vet ./...` and `go test -race ./...`. Tests pair qualified reuse/start with
 every relevant missing/denied/unknown/conflicting/misbound/stale check, true state
 expiry, full artifact identity, permutations, generation/mapping changes, partial
-DATA provenance, invalid source bindings and inert replay/Status. Engine docking
+DATA provenance, stop facts, both Host execution-binding fields, unsupported
+cross-source identity links, invalid source bindings and inert replay/Status. Engine docking
 uses real parser, record and selector code with fixture owner/lifecycle ports;
 it does not qualify production receipt acquisition or a live member.

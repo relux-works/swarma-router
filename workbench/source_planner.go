@@ -300,6 +300,9 @@ func (p SourcePlanner) read(ctx context.Context, r Request, only *SelectedBindin
 			if expected.Member != b.OwnerMember || expected.Project != b.OwnerProject || expected.Workbench != b.Workbench {
 				return normalizedInputs{}, Refusal{"source_conflict"}
 			}
+			if b.Execution["kind"] == "host" && (expected.Execution != b.Execution["execution"] || expected.RunnerInstance != b.Execution["runner_instance"]) {
+				return normalizedInputs{}, Refusal{"source_conflict"}
+			}
 			expected.SourceVersions = append([]string{}, expected.SourceVersions...)
 			sort.Strings(expected.SourceVersions)
 			result := inventory.Read(ctx, t.Host.Source, expected)
@@ -333,8 +336,12 @@ func (p SourcePlanner) read(ctx context.Context, r Request, only *SelectedBindin
 				state = selection.StateConflict
 			} else if h.Result.Class != "usable" {
 				state = selection.StateUnknown
-			} else if state == selection.Ready && hostConfigurationConflict(h.Result.Projection, b) {
+			} else if state == selection.Ready && hostReuseConflict(h.Result.Projection, b) {
 				state = selection.StateConflict
+			} else if state == selection.Ready && b.Execution["kind"] != "host" {
+				// The a2a union carries no Host execution/runner identity. A
+				// requested Host frame cannot qualify this unlinked execution.
+				state = selection.StateUnknown
 			}
 		}
 		candidate := selection.Candidate{Identity: identity, State: state, Checks: []selection.Check{}}
@@ -466,9 +473,15 @@ func requiredChecksAllow(c selection.Candidate, in selection.Input, action selec
 	}
 	return true
 }
-func hostConfigurationConflict(p *inventory.Projection, b TargetBinding) bool {
+func hostReuseConflict(p *inventory.Projection, b TargetBinding) bool {
 	if p == nil {
 		return true
+	}
+	for _, name := range []string{"security_stopped", "stop_requested"} {
+		f := p.Facts[name]
+		if f.Known && f.Value == true {
+			return true
+		}
 	}
 	for name, want := range map[string]string{"configured_vendor": b.Configuration.Vendor, "configured_model": b.Model, "profile": b.Profile, "profile_lock": b.Configuration.ProfileLock, "placement": b.Configuration.Placement} {
 		f := p.Facts[name]
