@@ -53,6 +53,13 @@ admitted Pulse self query and returns four desired self declarations with its
 source byte hash. It supplies no current ownership, installed configuration or
 runtime authority.
 
+The separate [local input planner](docs/local-workbench.md) accepts explicit caller
+statements on five named gates and admitted observations on the other eleven.
+It returns an inert recommendation and task-delivery draft with
+`execution_authority:false`. Its typed inputs cannot be passed to the existing
+effectful engine as owner witnesses. Source acquisition, actual task posting and
+session creation stay with the embedding's existing admitted routes.
+
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
 retain their required validation and installation gates.
@@ -176,7 +183,7 @@ recipient activity. No service restart, session stop, identity change or board m
 | Tool | Use and entry point | Outputs |
 | --- | --- | --- |
 | Go | `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
-| gofmt | `gofmt -w handoff launch inventory selection workbench cmd/queued-task-handoff` | Formats Go source in place. |
+| gofmt | `gofmt -w handoff launch inventory selection workbench localworkbench cmd/queued-task-handoff` | Formats Go source in place. |
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
 | Pulse | Self-card adapter uses `PULSE_ABS me --local-unsigned --card CARD_ABS --revision sha256:PIN --format json` with an admitted executable/card and unchanged actual caller | Read-only self declarations; isolated validation logs under `.temp/`. |
 | a2a | Adapter uses `a2a room members ROOM_ID --membership join --json`, `a2a read ROOM_ID --event EVENT --json`, and explicit `a2a post ROOM_ID --topic TOPIC --kind notice --to MEMBER --re REPLY NOTICE` | Existing messaging service plus local durable handoff receipts. |
