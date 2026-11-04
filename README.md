@@ -39,7 +39,12 @@ tests do not establish actual readiness or a qualified live tuple. The
 [private file repository](docs/workbench-file-repository.md) implements the upper
 storage port. [Combined docking tests](docs/workbench-docking.md) exercise these
 components with the existing lower file store and Curator plugin; actual owner,
-backend and readiness facts remain isolated fixtures.
+backend and readiness facts remain isolated fixtures. The
+[current local policy adapter](docs/workbench-local-access.md) supplies Access through
+a replaceable router-owned source seam and a strict read-only owner-managed JSON
+file source. It installs no policy or live grant. The workbench file source uses
+`golang.org/x/sys v0.35.0` and requires Go 1.23.0 or later; populate its module
+cache with `go mod download` before offline builds.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
