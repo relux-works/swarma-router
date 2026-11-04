@@ -44,7 +44,10 @@ backend and readiness facts remain isolated fixtures. The
 a replaceable router-owned source seam and a strict read-only owner-managed JSON
 file source. It installs no policy or live grant. The workbench file source uses
 `golang.org/x/sys v0.35.0` and requires Go 1.23.0 or later; populate its module
-cache with `go mod download` before offline builds.
+cache with `go mod download` before offline builds. The
+[partial task facts source](docs/workbench-task-facts.md) observes one admitted
+local board task through the supported CLI; its four facts and byte digest do
+not supply a positive owner receipt, eligibility or runtime readiness.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
 interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
