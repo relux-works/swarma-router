@@ -72,6 +72,10 @@ func TestFileStoreNegativeCustody(t *testing.T) {
 	if err := os.Mkdir(dir, 0755); err != nil {
 		t.Fatal(err)
 	}
+	// Establish the forbidden mode even when the process umask removes it.
+	if err := os.Chmod(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	if s, e := OpenFileStore(dir); e == nil {
 		s.Close()
 		t.Fatal("public directory admitted")

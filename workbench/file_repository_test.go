@@ -216,6 +216,10 @@ func TestFileRepositoryCustodyAndBounds(t *testing.T) {
 				if err := os.Mkdir(repo.Directory, 0755); err != nil {
 					t.Fatal(err)
 				}
+				// Establish the forbidden mode even when the process umask removes it.
+				if err := os.Chmod(repo.Directory, 0755); err != nil {
+					t.Fatal(err)
+				}
 			case "symlink-dir", "symlink-parent":
 				if err := os.Symlink(parent, filepath.Join(parent, "link")); err != nil {
 					t.Fatal(err)
