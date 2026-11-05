@@ -123,6 +123,25 @@ native assignment and durable handoff instead. Authentication of those sources
 belongs to the adapter. Without a readiness source, process metadata can yield
 `pending`, never `running`. No production binding-reader adapter is shipped here.
 
+The partial `internal/launchbridge` assembly adds exact authenticated custody
+event acquisition. It checks the actual messaging caller and joined issuer,
+accepts short names only against the caller's pinned server, and validates the
+versioned body's intent/configuration/lock, authority, access sets and interval.
+Unknown keys, duplicate keys, case aliases, attachments and mismatched scope are
+refused. Custody is accepted only as `kind=handover`. The public body omits and rejects
+the raw `native_thread` key. Its full intent digest already binds the exact
+NativeSession kept in the private trusted intent. Both messaging reads share a
+29-second deadline; the existing runner allows one additional second for
+output-pipe closure, with 2 MiB stdout and
+64 KiB stderr bounds. Each accepted JSON projection is limited to 64 KiB.
+
+Its trusted owner source must still acquire current task/hold and complete
+native/identity absence facts through an admitted operation. That production
+source and the binding-readiness source are unimplemented. Nil owner sources
+refuse admission; an event's authority field alone never establishes stopped
+state. Assembly and Prepare do not acquire sources or open the journal. There
+is no executable live entry point for this partial assembly.
+
 | Status | Meaning |
 | --- | --- |
 | `prepared` | Pure translation; no effect. |
