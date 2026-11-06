@@ -174,8 +174,9 @@ delivery draft. Every result has `execution_authority:false`. No command,
 launch, post, reservation, storage or journal effect occurs. The caller separately
 checks existing recipient membership, actual delivery binding and the exact
 recipient's addressed acceptance; a draft or server receipt establishes none of
-those outcomes. See `docs/local-workbench.md` for the sixteen gate unions and
-source restrictions; do not transplant the selector's normalized Check structs.
+those outcomes. See `docs/local-workbench.md` for the sixteen gates, each carrying
+an evidence union, and source restrictions; do not transplant the selector's
+normalized Check structs.
 
 ## Executable pure examples
 

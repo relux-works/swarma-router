@@ -61,8 +61,8 @@ effectful engine as owner witnesses. Source acquisition, actual task posting and
 session creation stay with the embedding's existing admitted routes.
 
 The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
-interface and the proposed full routing/plugin interface. Skill packaging and environment adoption
-retain their required validation and installation gates.
+interface, the implemented Go components and the proposed full routing/plugin interface. Skill packaging
+and environment adoption retain their required validation and installation gates.
 
 ## Queued task handoff
 
