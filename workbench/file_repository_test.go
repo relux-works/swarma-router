@@ -216,6 +216,13 @@ func TestFileRepositoryCustodyAndBounds(t *testing.T) {
 				if err := os.Mkdir(repo.Directory, 0755); err != nil {
 					t.Fatal(err)
 				}
+				// Mkdir applies umask; establish the permissive refusal fixture.
+				if err := os.Chmod(repo.Directory, 0755); err != nil {
+					t.Fatal(err)
+				}
+				if info, err := os.Stat(repo.Directory); err != nil || info.Mode().Perm() != 0755 {
+					t.Fatal("public directory fixture mode", info, err)
+				}
 			case "symlink-dir", "symlink-parent":
 				if err := os.Symlink(parent, filepath.Join(parent, "link")); err != nil {
 					t.Fatal(err)
@@ -232,6 +239,16 @@ func TestFileRepositoryCustodyAndBounds(t *testing.T) {
 			if j, err := repo.Open(ctx, req.Key()); err == nil {
 				j.Close()
 				t.Fatal("directory custody admitted", mode)
+			} else if mode == "public-dir" && err.Error() != "journal must be an owned private directory" {
+				t.Fatal("unexpected custody refusal", err)
+			}
+			if mode == "public-dir" {
+				if info, err := os.Stat(repo.Directory); err != nil || info.Mode().Perm() != 0755 {
+					t.Fatal("refusal changed public directory mode", info, err)
+				}
+				if entries, err := os.ReadDir(repo.Directory); err != nil || len(entries) != 0 {
+					t.Fatal("refusal wrote into public directory", entries, err)
+				}
 			}
 		})
 	}

@@ -72,9 +72,26 @@ func TestFileStoreNegativeCustody(t *testing.T) {
 	if err := os.Mkdir(dir, 0755); err != nil {
 		t.Fatal(err)
 	}
+	// Mkdir applies umask; establish the permissive input this refusal checks.
+	if err := os.Chmod(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(dir)
+	if err != nil || info.Mode().Perm() != 0755 {
+		t.Fatal("public directory fixture mode", info, err)
+	}
 	if s, e := OpenFileStore(dir); e == nil {
 		s.Close()
 		t.Fatal("public directory admitted")
+	} else if e.Error() != "journal must be an owned private directory" {
+		t.Fatal("unexpected custody refusal", e)
+	}
+	info, err = os.Stat(dir)
+	if err != nil || info.Mode().Perm() != 0755 {
+		t.Fatal("refusal changed public directory mode", info, err)
+	}
+	if entries, err := os.ReadDir(dir); err != nil || len(entries) != 0 {
+		t.Fatal("refusal wrote into public directory", entries, err)
 	}
 	dir = filepath.Join(parent, "private")
 	s, err := OpenFileStore(dir)
