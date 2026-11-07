@@ -121,7 +121,10 @@ The library checks matching runtime birth witnesses and binding/thread/lane
 references with the exact sender. For a non-chat member it requires the current
 native assignment and durable handoff instead. Authentication of those sources
 belongs to the adapter. Without a readiness source, process metadata can yield
-`pending`, never `running`. No production binding-reader adapter is shipped here.
+`pending`, never `running`. The internal [association embedding](router-launch-bridge.md)
+adds a stored-only comparison gate around independently acquired readiness.
+Its native command/transport remains unavailable pending separate source landing
+and qualification; no installed production binding reader is shipped here.
 
 | Status | Meaning |
 | --- | --- |
