@@ -159,7 +159,7 @@ func TestReceiptKeyAndTempSyncPlants(t *testing.T) {
 // Display-safe multilingual titles remain accepted; line separators, format
 // controls, private-use and noncharacters refuse before checks, writes or posts.
 func TestNoticeUnicodeBoundary(t *testing.T) {
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		title string
 		valid bool
 	}{
@@ -171,7 +171,8 @@ func TestNoticeUnicodeBoundary(t *testing.T) {
 		{"noncharacter\U0001fffe", false}, {"noncharacter\U0010ffff", false},
 		{" raw", false}, {strings.Repeat("a", 257), false},
 	} {
-		t.Run(tc.title, func(t *testing.T) {
+		// Keep raw titles out of the temporary directory name on older Go versions.
+		t.Run(fmt.Sprintf("case-%02d", i), func(t *testing.T) {
 			r, p := inputs()
 			r.TaskTitle, p.Tasks[0].Title = tc.title, tc.title
 			r.Action = "plan"
