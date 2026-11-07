@@ -68,8 +68,15 @@ cannot be represented is unavailable, with no truncation or new default.
 `Resolve` rechecks the typed Prepare against the same admitted local caller and
 project, normalizes the complete request and computes the original digest. It
 reads owner data once, reads each explicitly admitted Host feed once, then
-evaluates the current clock. Hard gates precede the unchanged selector's
-reuse-before-start preference and deterministic opaque-ID tie-break.
+evaluates the current clock. It brackets the complete acquisition with clock
+readings: a zero clock is unavailable, and a backwards clock refuses with
+`source_stale` before selection or retained-target revalidation can succeed.
+The same rule covers optional Host reads. It neither retries a source nor
+changes its observation/expiry or adds a lifetime. Equal readings remain valid;
+forward movement evaluates the actual source expiry. The rollback comparison
+uses wall time even when the clock supplies monotonic readings. Hard gates
+precede the unchanged selector's reuse-before-start preference and deterministic
+opaque-ID tie-break.
 
 The resulting proposal retains the selector basis, complete decision and source
 snapshot under `router-workbench-source-snapshot/0.1.0`. Its validity is no later

@@ -89,7 +89,9 @@ func (p LocalPlanner) recommend(ctx context.Context, r LocalRequest, only *Local
 		return bad("source_conflict")
 	}
 	now := p.Clock()
-	if !instant(now) {
+	// Source timestamps use wall time. Strip a possible monotonic reading so
+	// it cannot mask a backwards wall-clock step during acquisition.
+	if !instant(now) || now.Before(beforeRead.Round(0)) {
 		return bad("source_unavailable")
 	}
 	raw, err := json.Marshal(in)

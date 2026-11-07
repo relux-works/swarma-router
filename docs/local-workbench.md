@@ -20,6 +20,10 @@ choose these dependencies, source commands, paths, executable images or identiti
 Use a bounded context and a trusted UTC clock with millisecond precision. Call
 `Recommend` with a `LocalRequest`, and use the result's `Bytes` method for canonical
 JSON with UTC-millisecond times and an explicit false execution-authority field.
+Both recommendation and retained-target revalidation reject `source_unavailable`
+if the clock moves backwards during their source read. No eligible target or
+delivery draft is returned, and the reader is not retried. Equal clock readings
+remain valid; forward movement still evaluates the source's actual expiry.
 
 `LocalRequest` has exact caller/project/correlation/task identities, an explicit
 card set (member key, full MXID and source byte SHA256), explicit complete

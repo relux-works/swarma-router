@@ -252,6 +252,10 @@ func (p SourcePlanner) Revalidate(ctx context.Context, view View) error {
 }
 
 func (p SourcePlanner) read(ctx context.Context, r Request, only *SelectedBinding) (normalizedInputs, error) {
+	started := p.Clock()
+	if started.IsZero() {
+		return normalizedInputs{}, Refusal{"authority_unknown"}
+	}
 	request, _ := r.Prepare()
 	owner, err := p.Owner.Read(ctx, request, clone(only))
 	if err != nil {
@@ -320,6 +324,12 @@ func (p SourcePlanner) read(ctx context.Context, r Request, only *SelectedBindin
 	in := selection.Input{Basis: basis, Scope: selection.Partial, Now: p.Clock(), Candidates: []selection.Candidate{}}
 	if ctx.Err() != nil || in.Now.IsZero() {
 		return normalizedInputs{}, Refusal{"authority_unknown"}
+	}
+	// Cover the complete owner and optional Host acquisition. Evaluating at an
+	// earlier clock could revive an expiry that had already elapsed at entry.
+	// Compare wall time even if the injected clock retains monotonic readings.
+	if in.Now.Before(started.Round(0)) {
+		return normalizedInputs{}, Refusal{"source_stale"}
 	}
 	for _, t := range doc.Targets {
 		b := t.Binding
