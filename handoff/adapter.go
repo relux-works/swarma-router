@@ -59,6 +59,7 @@ type message struct {
 	Sender  string   `json:"sender"`
 	Kind    string   `json:"kind"`
 	Topic   string   `json:"topic"`
+	Root    string   `json:"root"`
 	To      []string `json:"to"`
 	Re      string   `json:"re"`
 	Body    string   `json:"body"`
@@ -137,18 +138,30 @@ func (a CLIAdapter) validateMessaging(ctx context.Context, r Request, p Policy) 
 	if err != nil || decode(out, &reply, false) != nil {
 		return "reply_unavailable"
 	}
-	if reply.Type != "message" || reply.EventID != r.ReplyTo || reply.RoomID != p.RoomID || reply.Topic != r.Topic {
+	if reason := validateReplyProjection(reply, r, p, seen); reason != "" {
+		return reason
+	}
+	if p.JSONBoard != nil {
+		return validateJSONBoardSource(r, p)
+	}
+	return ""
+}
+
+// The read --event projection distinguishes ordinary messages from topic roots.
+// Both bind the selected event, room, slug and joined sender. A topic root has
+// no parent thread; other event/projection kinds never satisfy this gate.
+func validateReplyProjection(reply message, r Request, p Policy, joined map[string]bool) string {
+	if (reply.Type != "message" && reply.Type != "topic") || (reply.Type == "topic" && reply.Root != "") || reply.EventID != r.ReplyTo || reply.RoomID != p.RoomID || reply.Topic != r.Topic {
 		return "reply_binding_mismatch"
 	}
+	// The CLI abbreviates only local senders. Never strip a foreign server or
+	// compare localparts: a full sender must match a joined ID byte for byte.
 	sender := reply.Sender
 	if name.MatchString(sender) {
 		sender = "@" + sender + ":" + p.Server
 	}
-	if sender == "" || !seen[sender] {
+	if sender == "" || !joined[sender] {
 		return "reply_sender_not_joined"
-	}
-	if p.JSONBoard != nil {
-		return validateJSONBoardSource(r, p)
 	}
 	return ""
 }

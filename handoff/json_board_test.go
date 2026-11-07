@@ -74,7 +74,7 @@ func jsonMessagingRunner(t *testing.T, r Request, p Policy, plant string, calls 
 }
 
 func TestJSONBoardPlanAndMessagingGates(t *testing.T) {
-	for _, tc := range []struct{ plant, want string }{{"valid", ""}, {"missing-recipient", "recipient_not_joined"}, {"partial", "membership_binding_mismatch"}, {"topic-snapshot", "reply_binding_mismatch"}, {"reply-room", "reply_binding_mismatch"}, {"drift-during-messaging", "board_element_changed"}} {
+	for _, tc := range []struct{ plant, want string }{{"valid", ""}, {"missing-recipient", "recipient_not_joined"}, {"partial", "membership_binding_mismatch"}, {"topic-snapshot", ""}, {"reply-room", "reply_binding_mismatch"}, {"drift-during-messaging", "board_element_changed"}} {
 		t.Run(tc.plant, func(t *testing.T) {
 			r, p, _ := jsonBoardInputs(t)
 			calls := 0

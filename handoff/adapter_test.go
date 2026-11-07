@@ -48,7 +48,7 @@ func testCLIAdapterAuthorityAndReplyControls(t *testing.T, configured bool) {
 		{"remote-active", "board_authority_not_local"}, {"remote-override", "board_authority_not_local"},
 		{"second-binding-drift", "task_source_unavailable"}, {"wrong-filter", "membership_binding_mismatch"},
 		{"invited-member", "membership_binding_mismatch"}, {"duplicate-member", "membership_binding_mismatch"},
-		{"wrong-reply-type", "reply_binding_mismatch"}, {"wrong-reply-room", "reply_binding_mismatch"},
+		{"wrong-reply-type", "reply_binding_mismatch"}, {"topic-root", ""}, {"wrong-reply-room", "reply_binding_mismatch"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.plant, func(t *testing.T) {
@@ -182,6 +182,8 @@ func testCLIAdapterAuthorityAndReplyControls(t *testing.T, configured bool) {
 				if args[3] == r.ReplyTo {
 					switch tc.plant {
 					case "wrong-reply-type":
+						v["type"] = "reaction"
+					case "topic-root":
 						v["type"] = "topic"
 					case "wrong-reply-room":
 						v["room_id"] = "!other"

@@ -58,8 +58,14 @@ check follows messaging reads, and another precedes an optional post.
 
 After source admission the existing complete membership, caller, recipient,
 reply sender, topic and exact room-ID checks still run. A saved membership or
-reply snapshot does not become a live API response, and a topic response does not
-satisfy the existing message-reply check. The adapter cannot disable these gates.
+reply snapshot does not become a live API response. The exact-event CLI read may
+project the pinned reply as either `message` or `topic`. A `topic` projection must
+be a root with no parent thread. Both forms require the exact event ID, room ID,
+topic slug and a joined sender. Short local senders normalize using the admitted
+server; full IDs match membership exactly, without stripping foreign servers.
+Other projection types and missing or conflicting identity fields refuse. Posted
+notice readback still requires `message` and all original receipt fields.
+The adapter cannot disable these gates.
 `plan` still returns only a notice and creates no journal. Dispatch still requires
 the existing intent journal, post and event-readback checks; this source does not
 establish acceptance or execution. Preparing configuration and passing synthetic
