@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -83,6 +84,7 @@ func TestAssignmentIDConfigurationErrors(t *testing.T) {
 		{Pattern: "[", MaxBytes: 32}, {Pattern: `(a)\1`, MaxBytes: 32},
 		{Pattern: `(?=JOB)JOB`, MaxBytes: 32}, {Pattern: strings.Repeat("a", 513), MaxBytes: 32},
 		{Pattern: string([]byte{0xff}), MaxBytes: 32},
+		{Pattern: `JOB)|(?:SAFE`, MaxBytes: 32}, {Pattern: `)|(?:`, MaxBytes: 32},
 	} {
 		r, p := inputs()
 		p.AssignmentID = &config
@@ -107,6 +109,112 @@ func TestAssignmentIDConfigurationErrors(t *testing.T) {
 		var p Policy
 		if Decode([]byte(raw), &p) == nil {
 			t.Fatal("accepted invalid configuration", raw)
+		}
+	}
+}
+
+// Configuration is standalone Go RE2 syntax. Quoting and flags must retain
+// their meaning when full-string anchors are added, including an open \Q quote.
+func TestAssignmentIDRE2Semantics(t *testing.T) {
+	for _, tc := range []struct {
+		name, pattern, id string
+		match             bool
+	}{
+		{"open-quote", `\QJOB`, "JOB", true},
+		{"closed-quote", `\QJOB\E`, "JOB", true},
+		{"quoted-prefix", `\QJOB`, "JOB-extra", false},
+		{"quoted-suffix", `\QJOB`, "extraJOB", false},
+		{"quoted-operators", `\QJOB|SAFE`, "JOB", false},
+		{"quoted-group", `\QJOB)|(?:SAFE`, "JOB", false},
+		{"quote-then-alternation", `\QJOB\E|SAFE`, "SAFE", true},
+		{"alternation", `JOB|SAFE`, "JOB", true},
+		{"alternation-prefix", `JOB|SAFE`, "JOB-extra", false},
+		{"alternation-suffix", `JOB|SAFE`, "extraSAFE", false},
+		{"case-flag", `(?i)job`, "JOB", true},
+		{"scoped-flags", `(?i:job)|SAFE`, "JOB", true},
+		{"scoped-flags-end", `(?i:job)|SAFE`, "safe", false},
+		{"multiline", `(?m)^JOB$`, "JOB", true},
+		{"multiline-prefix", `(?m)^JOB$`, "JOB-extra", false},
+		{"dotall", `(?s)J.*`, "JOB", true},
+		{"ungreedy", `(?U)J.+`, "JOB", true},
+		{"pattern-byte-bound", strings.Repeat(`(?:)`, 127) + `JOB?`, "JOB", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := regexp.Compile(tc.pattern); err != nil {
+				t.Fatal("invalid standalone positive syntax control", err)
+			}
+			r, p := configuredInputs()
+			r.Action, r.TaskID, p.Tasks[0].ID = "plan", tc.id, tc.id
+			p.AssignmentID.Pattern = tc.pattern
+			a := &fakeAdapter{}
+			got := (Engine{Adapter: a}).Execute(context.Background(), r, p, "unused")
+			if tc.match {
+				if got.Status != "planned" || a.checks != 1 || a.posts != 0 {
+					t.Fatalf("valid pattern: %+v adapter=%+v", got, a)
+				}
+			} else if got.Status != "refused" || got.Reason != "invalid_request" || a.checks != 0 || a.posts != 0 {
+				t.Fatalf("whole-string rejection: %+v adapter=%+v", got, a)
+			}
+
+			// Only inert runners are used: a valid pattern reaches the source
+			// check, while a rejected ID reaches neither direct adapter runner.
+			calls := 0
+			direct := CLIAdapter{Runner: runnerFunc(func(_ context.Context, _, name string, _ ...string) ([]byte, error) {
+				calls++
+				if name == "a2a" {
+					return []byte("$inert"), nil
+				}
+				return nil, nil
+			})}
+			reason := direct.ValidateSources(context.Background(), r, p)
+			if tc.match {
+				if reason != "board_authority_not_local" || calls != 1 {
+					t.Fatal(reason, calls)
+				}
+			} else if reason != "invalid_request" || calls != 0 {
+				t.Fatal(reason, calls)
+			}
+			calls = 0
+			event, err := direct.Post(context.Background(), r, p, "inert")
+			if tc.match {
+				if err != nil || event != "$inert" || calls != 1 {
+					t.Fatal(event, err, calls)
+				}
+			} else if err == nil || calls != 0 {
+				t.Fatal(event, err, calls)
+			}
+		})
+	}
+}
+
+func TestAssignmentIDMalformedRE2NoEffects(t *testing.T) {
+	for _, pattern := range []string{`JOB)|(?:SAFE`, `)|(?:`, `\QJOB\E)|(?:SAFE`, `\QJOB\E(`} {
+		if _, err := regexp.Compile(pattern); err == nil {
+			t.Fatal("malformed standalone syntax control unexpectedly compiled")
+		}
+		for _, action := range []string{"plan", "dispatch"} {
+			t.Run(pattern+"/"+action, func(t *testing.T) {
+				r, p := configuredInputs()
+				r.Action, p.AssignmentID.Pattern = action, pattern
+				calls, opens := 0, 0
+				a := CLIAdapter{Runner: runnerFunc(func(context.Context, string, string, ...string) ([]byte, error) {
+					calls++
+					return []byte("$inert"), nil
+				})}
+				got := (Engine{Adapter: a, OpenJournal: func(string) (Journal, error) {
+					opens++
+					return nil, os.ErrPermission
+				}}).Execute(context.Background(), r, p, "unused")
+				if got.Status != "refused" || got.Reason != "invalid_policy" || calls != 0 || opens != 0 {
+					t.Fatal(got, calls, opens)
+				}
+				if reason := a.ValidateSources(context.Background(), r, p); reason != "invalid_policy" || calls != 0 {
+					t.Fatal(reason, calls)
+				}
+				if event, err := a.Post(context.Background(), r, p, "inert"); err == nil || event != "" || calls != 0 {
+					t.Fatal(event, err, calls)
+				}
+			})
 		}
 	}
 }

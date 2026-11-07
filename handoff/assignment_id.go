@@ -3,6 +3,7 @@ package handoff
 import (
 	"errors"
 	"regexp"
+	"regexp/syntax"
 	"unicode/utf8"
 )
 
@@ -20,9 +21,14 @@ func assignmentIDs(config *AssignmentIDPolicy) (assignmentIDMatcher, error) {
 	if config.MaxBytes < 1 || config.MaxBytes > 256 || len(config.Pattern) == 0 || len(config.Pattern) > 512 || !utf8.ValidString(config.Pattern) {
 		return assignmentIDMatcher{}, errors.New("invalid assignment ID policy")
 	}
-	// Go regexp uses RE2 semantics. Bound the pattern before compilation and
-	// enforce full-string matching even for alternations or multiline flags.
-	pattern, err := regexp.Compile(`\A(?:` + config.Pattern + `)\z`)
+	// Parse bounded standalone Go RE2 syntax before adding anchors. The parsed
+	// tree's string form safely closes quotes and scopes flags; raw text could
+	// escape the wrapper with unmatched groups or absorb its suffix with \Q.
+	parsed, err := syntax.Parse(config.Pattern, syntax.Perl)
+	if err != nil {
+		return assignmentIDMatcher{}, errors.New("invalid assignment ID policy")
+	}
+	pattern, err := regexp.Compile(`\A(?:` + parsed.String() + `)\z`)
 	if err != nil {
 		return assignmentIDMatcher{}, errors.New("invalid assignment ID policy")
 	}
