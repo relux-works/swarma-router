@@ -48,6 +48,9 @@ project root. Directory-FD traversal refuses symlinks in every component; leaf
 opens are relative to that directory and never execute a board field. Project
 and board roots must be owned by the current user and unwritable by group/other.
 The regular, single-link element has the same ownership/write restrictions.
+All three opened objects also pass the platform ACL custody check; an ACL or
+a failed/unknown Darwin ACL query refuses. Checks and subsequent traversal/read
+use the same descriptors, without reopening a checked path.
 Trusted same-user ancestor custody is required, as for the existing policy;
 this is not protection against a hostile same-user process or root. Missing,
 changed, malformed or conflicting files stop before messaging. A second hash

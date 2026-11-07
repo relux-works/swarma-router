@@ -69,3 +69,55 @@ func TestDarwinExtendedACLCustody(t *testing.T) {
 		})
 	}
 }
+
+// These native plants exercise each JSON source surface independently. Cross
+// compilation or an injected checker does not qualify native ACL behavior.
+func TestDarwinJSONBoardExtendedACLCustody(t *testing.T) {
+	for _, surface := range []string{"project", "board", "element"} {
+		t.Run(surface, func(t *testing.T) {
+			r, p, _ := jsonBoardInputs(t)
+			if got := validateJSONBoardSource(r, p); got != "" {
+				t.Fatal("ACL-free control", got)
+			}
+			path := map[string]string{"project": p.ProjectRoot, "board": p.BoardDir, "element": filepath.Join(p.BoardDir, p.JSONBoard.Elements[0].File)}[surface]
+			// Clear the fixture ACL before TempDir cleanup, even on a test failure.
+			t.Cleanup(func() {
+				if out, err := exec.Command("/bin/chmod", "-N", path).CombinedOutput(); err != nil {
+					t.Errorf("ACL cleanup: %v %s", err, out)
+				}
+			})
+			if out, err := exec.Command("/bin/chmod", "+a", "everyone allow read,write", path).CombinedOutput(); err != nil {
+				t.Fatalf("ACL plant: %v %s", err, out)
+			}
+			st, err := os.Stat(path)
+			if err != nil || st.Mode().Perm()&0022 != 0 {
+				t.Fatal("plant must retain private mode bits", st, err)
+			}
+			if got := validateJSONBoardSource(r, p); got != "board_element_unavailable" {
+				t.Fatal("ACL write grant admitted", got)
+			}
+			if out, err := exec.Command("/bin/chmod", "-N", path).CombinedOutput(); err != nil {
+				t.Fatalf("clear ACL: %v %s", err, out)
+			}
+			if got := validateJSONBoardSource(r, p); got != "" {
+				t.Fatal("restored ACL-free control", got)
+			}
+		})
+	}
+}
+
+func TestDarwinACLQueryErrorRefuses(t *testing.T) {
+	f, err := os.Open(realTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !noExtendedACL(f) {
+		t.Fatal("ACL-free directory refused")
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if noExtendedACL(f) {
+		t.Fatal("failed descriptor query admitted")
+	}
+}

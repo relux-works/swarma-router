@@ -105,6 +105,8 @@ func validateJSONBoardPolicy(p Policy, ids assignmentIDMatcher) string {
 
 // openBoardDirectory walks from a directory FD with O_NOFOLLOW at every step,
 // avoiding path-check/open races and symlink escapes on all supported platforms.
+// Custody, including platform ACLs, is checked on the same opened object used
+// for the next relative open or read; no check reopens an object by its path.
 // Same-user trusted ancestors are assumed, as for the existing private policy.
 func openBoardDirectory(p Policy) (*os.File, error) {
 	fd, err := unix.Open("/", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
@@ -123,7 +125,7 @@ func openBoardDirectory(p Policy) (*os.File, error) {
 		current = os.NewFile(uintptr(next), component)
 		if path == p.ProjectRoot || path == p.BoardDir {
 			var st unix.Stat_t
-			if unix.Fstat(next, &st) != nil || st.Uid != uint32(os.Getuid()) || st.Mode&0022 != 0 {
+			if unix.Fstat(next, &st) != nil || st.Uid != uint32(os.Getuid()) || st.Mode&0022 != 0 || !noExtendedACL(current) {
 				current.Close()
 				return nil, errors.New("untrusted board directory")
 			}
@@ -145,7 +147,7 @@ func readBoardElement(p Policy, element JSONBoardElement) ([]byte, error) {
 	f := os.NewFile(uintptr(fd), element.File)
 	defer f.Close()
 	var st unix.Stat_t
-	if unix.Fstat(fd, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Uid != uint32(os.Getuid()) || st.Mode&0022 != 0 || st.Nlink != 1 || st.Size > FileLimit {
+	if unix.Fstat(fd, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Uid != uint32(os.Getuid()) || st.Mode&0022 != 0 || st.Nlink != 1 || st.Size > FileLimit || !noExtendedACL(f) {
 		return nil, errors.New("invalid board file")
 	}
 	data, err := io.ReadAll(io.LimitReader(f, FileLimit+1))
