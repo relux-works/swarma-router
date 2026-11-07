@@ -31,17 +31,25 @@ type Request struct {
 
 // Policy is an explicit local admission binding, not a task-assignment service.
 type Policy struct {
-	Contract    string        `json:"contract"`
-	Project     string        `json:"project"`
-	ProjectRoot string        `json:"project_root"`
-	BoardDir    string        `json:"board_dir"`
-	Server      string        `json:"server"`
-	Sender      string        `json:"sender"`
-	Room        string        `json:"room"`
-	RoomID      string        `json:"room_id"`
-	Topic       string        `json:"topic"`
-	ReplyTo     string        `json:"reply_to"`
-	Tasks       []TaskBinding `json:"tasks"`
+	AssignmentID *AssignmentIDPolicy `json:"assignment_id,omitempty"`
+	Contract     string              `json:"contract"`
+	Project      string              `json:"project"`
+	ProjectRoot  string              `json:"project_root"`
+	BoardDir     string              `json:"board_dir"`
+	Server       string              `json:"server"`
+	Sender       string              `json:"sender"`
+	Room         string              `json:"room"`
+	RoomID       string              `json:"room_id"`
+	Topic        string              `json:"topic"`
+	ReplyTo      string              `json:"reply_to"`
+	Tasks        []TaskBinding       `json:"tasks"`
+}
+
+// AssignmentIDPolicy narrows the safe bare-ID alphabet for the existing source
+// adapter. It does not select a provider or establish assignment authority.
+type AssignmentIDPolicy struct {
+	Pattern  string `json:"pattern"`
+	MaxBytes int    `json:"max_bytes"`
 }
 
 type TaskBinding struct {
@@ -88,7 +96,11 @@ func textOK(s string) bool {
 }
 
 func validate(r Request, p Policy) string {
-	if r.Contract != Contract || (r.Action != "plan" && r.Action != "dispatch") || !key.MatchString(r.CorrelationID) || !slug.MatchString(r.Project) || !taskID.MatchString(r.TaskID) || !textOK(r.TaskTitle) || !name.MatchString(r.Member) || !slug.MatchString(r.Room) || !slug.MatchString(r.Topic) || !eventID.MatchString(r.ReplyTo) {
+	ids, err := assignmentIDs(p.AssignmentID)
+	if err != nil {
+		return "invalid_policy"
+	}
+	if r.Contract != Contract || (r.Action != "plan" && r.Action != "dispatch") || !key.MatchString(r.CorrelationID) || !slug.MatchString(r.Project) || !ids.matches(r.TaskID) || !textOK(r.TaskTitle) || !name.MatchString(r.Member) || !slug.MatchString(r.Room) || !slug.MatchString(r.Topic) || !eventID.MatchString(r.ReplyTo) {
 		return "invalid_request"
 	}
 	if p.Contract != Contract || !slug.MatchString(p.Project) || !filepath.IsAbs(p.ProjectRoot) || filepath.Clean(p.ProjectRoot) != p.ProjectRoot || !filepath.IsAbs(p.BoardDir) || filepath.Clean(p.BoardDir) != p.BoardDir || !server.MatchString(p.Server) || !name.MatchString(p.Sender) || !slug.MatchString(p.Room) || !roomID.MatchString(p.RoomID) || !slug.MatchString(p.Topic) || !eventID.MatchString(p.ReplyTo) || len(p.Tasks) == 0 || len(p.Tasks) > 256 {
@@ -98,7 +110,7 @@ func validate(r Request, p Policy) string {
 	var selected *TaskBinding
 	for i := range p.Tasks {
 		t := &p.Tasks[i]
-		if !taskID.MatchString(t.ID) || !textOK(t.Title) || seen[t.ID] || len(t.Members) == 0 || len(t.Members) > 64 {
+		if !ids.matches(t.ID) || !textOK(t.Title) || seen[t.ID] || len(t.Members) == 0 || len(t.Members) > 64 {
 			return "invalid_policy"
 		}
 		seen[t.ID] = true

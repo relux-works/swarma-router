@@ -25,6 +25,11 @@ func localConfig(p Policy) map[string]any {
 // alias availability. The isolated valid controls cover opaque and server-qualified
 // IDs; every planted source mismatch prevents all post calls.
 func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
+	t.Run("native", func(t *testing.T) { testCLIAdapterAuthorityAndReplyControls(t, false) })
+	t.Run("configured", func(t *testing.T) { testCLIAdapterAuthorityAndReplyControls(t, true) })
+}
+
+func testCLIAdapterAuthorityAndReplyControls(t *testing.T, configured bool) {
 	cases := []struct{ plant, reason string }{
 		{"valid", ""}, {"opaque-room-id", ""}, {"server-qualified-room-id", ""},
 		{"remote", "board_authority_not_local"}, {"storage", "board_authority_not_local"},
@@ -48,6 +53,9 @@ func TestCLIAdapterAuthorityAndReplyControls(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.plant, func(t *testing.T) {
 			r, p := inputs()
+			if configured {
+				r, p = configuredInputs()
+			}
 			switch tc.plant {
 			case "opaque-room-id":
 				p.RoomID = "!existing_Opaque-Room123"

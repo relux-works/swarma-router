@@ -53,7 +53,24 @@ The separate local policy has exactly these fields, with a nonempty allowlist:
 }
 ```
 
-Replace illustrative values using independently verified actual references. Copy the exact native task title, including its existing ID prefix; do not derive a friendlier title from the task ID. Bind the actual project root, local board storage, server, sender, room ID, topic, reply event and allowed task/member. Use the current caller's identity only; no token, environment override, free-form task body, command or secret is accepted in the request. The policy is operator-controlled local admission, not cryptographic authority or proof of assignment. Keep it owned by the current user, mode 0600, in trusted custody.
+Replace illustrative values using independently verified actual references. Copy the exact source task title, including any existing ID prefix; do not derive a friendlier title from the task ID. Bind the actual project root, local board storage, server, sender, room ID, topic, reply event and allowed task/member. Use the current caller's identity only; no token, environment override, free-form task body, command or secret is accepted in the request. The policy is operator-controlled local admission, not cryptographic authority or proof of assignment. Keep it owned by the current user, mode 0600, in trusted custody.
+
+At source revisions supporting configurable assignment IDs, the private policy may also contain
+`"assignment_id": {"pattern": "JOB-[0-9]{6}-[0-9]{4}", "max_bytes": 32}`. Both request and
+policy task IDs must match that whole-string RE2 pattern. Patterns are at most 512 UTF-8 bytes;
+the required byte limit is 1–256. IDs always start with an ASCII letter/digit and contain only
+ASCII letters/digits, hyphens and underscores. Invalid configuration fails closed before source
+reads. Omission or `null` keeps native TASK/BUG validation and existing journal digests. A
+configured policy replaces that default and is bound in full to journal intent; changing its
+pattern or bound requires a new authorized intent, never a workaround for an uncertain receipt.
+Older artifacts reject the optional field; use only a separately reviewed compatible artifact.
+
+Keep the exact admitted source ID and title; do not rename an assignment to fit a pattern. The
+format option supplies no new source provider or authority. The existing local `task-board`
+configuration/query contract, joined membership, logical room slug, exact room ID and reply
+checks still apply. A plain JSON board or opaque room ID alone cannot satisfy those contracts.
+The fixed queued-notice body remains unchanged; matching a separately sent assignment template
+and a post-landing real-assignment plan are separate qualification gates.
 
 The MVP's `sender` and `member` fields are local account names, bound to the policy's single exact server when checking membership. They do not accept a full federated MXID. Do not strip a foreign homeserver or treat equal local names on different servers as the same recipient; a federated destination needs a separately supported contract/admission.
 

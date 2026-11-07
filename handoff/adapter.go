@@ -65,6 +65,11 @@ type message struct {
 }
 
 func (a CLIAdapter) ValidateSources(ctx context.Context, r Request, p Policy) string {
+	// Keep direct adapter callers behind the same ID and binding checks as
+	// Engine before constructing the bare-ID board query.
+	if reason := validate(r, p); reason != "" {
+		return reason
+	}
 	if a.Runner == nil {
 		return "adapter_unavailable"
 	}
@@ -131,6 +136,9 @@ func (a CLIAdapter) ValidateSources(ctx context.Context, r Request, p Policy) st
 }
 
 func (a CLIAdapter) Post(ctx context.Context, r Request, p Policy, body string) (string, error) {
+	if reason := validate(r, p); reason != "" {
+		return "", errors.New("invalid handoff binding")
+	}
 	if a.Runner == nil {
 		return "", errors.New("adapter unavailable")
 	}

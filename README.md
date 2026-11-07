@@ -95,8 +95,38 @@ The policy binds:
 - `project` to `project_root` (the absolute project directory) and `board_dir` (the absolute local
   board **storage** directory, usually `project_root/.task-board`);
 - `server`, the caller's own `sender`, and the exact admitted `room`/`room_id`/`topic`/`reply_to`;
-- each allowed task ID and its exact native `title`, including the board's existing ID prefix,
+- each allowed task ID and its exact source `title`, including any existing ID prefix,
   to an explicit list of allowed recipients.
+
+An optional `assignment_id` object in the private policy defines the ID format for both
+`request.task_id` and every `policy.tasks[].id`. For example:
+
+```json
+"assignment_id": {"pattern": "JOB-[0-9]{6}-[0-9]{4}", "max_bytes": 32}
+```
+
+The pattern uses Go's RE2 syntax, matches the whole ID, and is limited to 512 UTF-8 bytes.
+`max_bytes` is required and must be 1–256 inclusive. IDs must also start with an ASCII
+letter or digit and contain only ASCII letters, digits, hyphens and underscores. Configuration
+cannot admit query syntax, paths, whitespace, control characters or command flags. Invalid or
+incomplete configuration refuses as `invalid_policy` before source access; a request outside
+the configured format refuses as `invalid_request`, and a policy task outside it as
+`invalid_policy`. The configured format replaces the default; include any intended native
+alternatives explicitly in its pattern. The request cannot choose its own format.
+
+Omitting `assignment_id` (or setting it to `null`) preserves the original
+`^(TASK|BUG)-[0-9]{6}-[a-z0-9]+$` behavior and policy serialization, including existing journal
+digests. A configured policy, including its exact pattern and byte limit, is hashed into the
+existing journal intent. Changing either field conflicts under the same correlation; retain
+the original private policy for reconciliation. No receipt migration or new wire version is
+needed for the optional field; older executables reject configured policies as unknown fields.
+
+This format seam keeps the existing `task-board` adapter and its exact local configuration,
+ID/title, membership and reply checks. A matching pattern does not make an arbitrary JSON
+board a supported source, establish a genuine assignment, resolve a logical room slug, or
+change the fixed notice body. A non-native source must actually support the existing
+`project_config(); get(ID) { id title }` contract and all other admission requirements before
+planning can succeed. No alternative source provider or assignment alias is supplied here.
 
 This policy does not prove or change a task assignment. Before a new dispatch, the adapter checks
 the actual local board configuration and task ID/title, a complete joined-members projection
