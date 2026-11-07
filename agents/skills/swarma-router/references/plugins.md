@@ -36,6 +36,40 @@ name; federated sender normalization is not implemented. `a2a post` stdout must 
 bare event ID (surrounding whitespace allowed), no status prefix or commentary. A changed tool output
 contract needs adapter qualification; a printed ID alone proves no delivery or recipient acceptance.
 
+### Wire and exercise an in-memory adapter
+
+For the shipped MVP, implement `handoff.Adapter` in Go and supply the value as
+`handoff.Engine{Adapter: adapter}`. This is static dependency injection in an
+embedding, not registration in the existing CLI. The CLI continues to construct
+its own `CLIAdapter`; no declaration record, discovery or installation command
+selects a custom adapter.
+
+Repository locator `handoff/example_test.go` (`ExampleEngine`) is a runnable
+external-package example. It implements the real interface with a compile-time
+check, wires it into the engine and runs only `action: "plan"`. The first result
+is `planned`; making only the synthetic source unavailable returns
+`refused/source_unavailable` with no notice. Both calls together make two source
+checks and zero Post, VerifyEvent or journal-open calls. All bindings are example
+data; the adapter performs no source acquisition and cannot post, read an event
+or open a journal. Its synthetic successful check is not a production admission
+recipe. Even a real CLI `plan` may invoke read-only native source tools; this
+example instead uses only in-memory values.
+
+From a matching repository checkout, with an admitted Go toolchain and private
+build cache, run:
+
+```sh
+GOTOOLCHAIN=local GOPROXY=off go test -count=1 -run '^ExampleEngine$' ./handoff
+```
+
+The path is repository-relative, not a file bundled with a separately copied
+skill. Inspect `handoff/engine.go`, `handoff/types.go` and the source validation
+contract above before writing a real adapter. It must acquire and validate all
+required sources; an unconditional empty reason would bypass that responsibility.
+Dispatch needs its own admitted adapter, durable journal and effect authority;
+changing this fixture's action or reusing its fabricated policy supplies none of
+them. This example qualifies neither an installed CLI nor a live delivery tuple.
+
 ## Declaration and registration design
 
 Use [interface-contract.md](interface-contract.md), **Proposed adapter ports and capability negotiation**, **Closed router-facing port records**, and **Observation plugins and frozen feature inputs**. The accepted design defines no released plugin package ID, discovery command, config filename or installation route.
