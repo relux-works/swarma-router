@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// CLIAdapter is the only implemented broker/source seam. A Runner is trusted code,
+// CLIAdapter selects the policy's source seam. A Runner is trusted code,
 // never request-controlled executable names, flags, environment or command text.
 type CLIAdapter struct{ Runner Runner }
 
@@ -73,6 +73,17 @@ func (a CLIAdapter) ValidateSources(ctx context.Context, r Request, p Policy) st
 	if a.Runner == nil {
 		return "adapter_unavailable"
 	}
+	if p.JSONBoard != nil {
+		if reason := validateJSONBoardSource(r, p); reason != "" {
+			return reason
+		}
+	} else if reason := a.validateNativeBoard(ctx, r, p); reason != "" {
+		return reason
+	}
+	return a.validateMessaging(ctx, r, p)
+}
+
+func (a CLIAdapter) validateNativeBoard(ctx context.Context, r Request, p Policy) string {
 	// project_config is always local; do not query an element on a known remote board.
 	out, err := a.board(ctx, p, "project_config()")
 	if err != nil || !localBinding(out, p) {
@@ -93,9 +104,13 @@ func (a CLIAdapter) ValidateSources(ctx context.Context, r Request, p Policy) st
 	if task.ID != r.TaskID || task.Title != r.TaskTitle {
 		return "task_source_mismatch"
 	}
+	return ""
+}
+
+func (a CLIAdapter) validateMessaging(ctx context.Context, r Request, p Policy) string {
 	// Select the already pinned room directly; a logical slug may resolve on a
 	// different homeserver after account migration. Readbacks still bind its ID.
-	out, err = a.Runner.Run(ctx, p.ProjectRoot, "a2a", "room", "members", p.RoomID, "--membership", "join", "--json")
+	out, err := a.Runner.Run(ctx, p.ProjectRoot, "a2a", "room", "members", p.RoomID, "--membership", "join", "--json")
 	var members memberProjection
 	if err != nil || decode(out, &members, false) != nil {
 		return "membership_unavailable"
@@ -132,6 +147,9 @@ func (a CLIAdapter) ValidateSources(ctx context.Context, r Request, p Policy) st
 	if sender == "" || !seen[sender] {
 		return "reply_sender_not_joined"
 	}
+	if p.JSONBoard != nil {
+		return validateJSONBoardSource(r, p)
+	}
 	return ""
 }
 
@@ -141,6 +159,11 @@ func (a CLIAdapter) Post(ctx context.Context, r Request, p Policy, body string) 
 	}
 	if a.Runner == nil {
 		return "", errors.New("adapter unavailable")
+	}
+	if p.JSONBoard != nil {
+		if reason := validateJSONBoardSource(r, p); reason != "" {
+			return "", errors.New("board source no longer admitted")
+		}
 	}
 	out, err := a.Runner.Run(ctx, p.ProjectRoot, "a2a", "post", p.RoomID, "--topic", r.Topic, "--kind", "notice", "--to", r.Member, "--re", r.ReplyTo, body)
 	return strings.TrimSpace(string(out)), err

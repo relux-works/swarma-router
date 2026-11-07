@@ -32,6 +32,7 @@ type Request struct {
 // Policy is an explicit local admission binding, not a task-assignment service.
 type Policy struct {
 	AssignmentID *AssignmentIDPolicy `json:"assignment_id,omitempty"`
+	JSONBoard    *JSONBoardPolicy    `json:"json_board,omitempty"`
 	Contract     string              `json:"contract"`
 	Project      string              `json:"project"`
 	ProjectRoot  string              `json:"project_root"`
@@ -99,6 +100,9 @@ func validate(r Request, p Policy) string {
 	ids, err := assignmentIDs(p.AssignmentID)
 	if err != nil {
 		return "invalid_policy"
+	}
+	if reason := validateJSONBoardPolicy(p, ids); reason != "" {
+		return reason
 	}
 	if r.Contract != Contract || (r.Action != "plan" && r.Action != "dispatch") || !key.MatchString(r.CorrelationID) || !slug.MatchString(r.Project) || !ids.matches(r.TaskID) || !textOK(r.TaskTitle) || !name.MatchString(r.Member) || !slug.MatchString(r.Room) || !slug.MatchString(r.Topic) || !eventID.MatchString(r.ReplyTo) {
 		return "invalid_request"

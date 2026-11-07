@@ -1,0 +1,45 @@
+{
+  "contract": "queued-task-handoff/0.1.0",
+  "project": "example",
+  "project_root": "/workspace/example",
+  "board_dir": "/workspace/example/board",
+  "server": "example.test",
+  "sender": "caller",
+  "room": "example",
+  "room_id": "!example-not-live",
+  "topic": "work",
+  "reply_to": "$example-not-live",
+  "tasks": [
+    {
+      "id": "JOB-240101-0042",
+      "title": "Example assignment",
+      "members": [
+        "recipient"
+      ]
+    }
+  ],
+  "assignment_id": {
+    "pattern": "JOB-[0-9]{6}-[0-9]{4}",
+    "max_bytes": 32
+  },
+  "json_board": {
+    "schema": "keeper-assignment/1",
+    "context": {
+      "project": "example",
+      "project_root": "/workspace/example",
+      "board_dir": "/workspace/example/board",
+      "room_alias": "#example",
+      "room_id": "!example-not-live",
+      "topic": "work",
+      "reply_to": "$example-not-live"
+    },
+    "elements": [
+      {
+        "id": "JOB-240101-0042",
+        "file": "JOB-240101-0042.json",
+        "sha256": "edb4fbb3b2e875ef9f5c65d90a07de88a93043904ac6a8e6e3d3d622dfa53970",
+        "assigned_to": "recipient"
+      }
+    ]
+  }
+}

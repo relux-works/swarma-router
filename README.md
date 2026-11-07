@@ -71,8 +71,11 @@ through the caller's existing a2a identity, and checks the returned server event
 means **queued notification**. Recipient acceptance, work started, execution, liveness, assignment,
 claims and exactly-once external delivery are separate facts.
 
-The implementation targets macOS and Linux, uses Go 1.23 or later and the standard library, and needs
-the already configured `a2a` and `task-board` CLIs. It creates no identity, room, session or daemon.
+The implementation targets macOS and Linux and uses Go 1.23 or later. It needs the
+already configured `a2a` CLI and, by default, `task-board`. An explicit private
+policy can select the [read-only JSON assignment source](docs/queued-handoff-json-board.md)
+instead; that source uses the existing pinned `golang.org/x/sys` dependency.
+It creates no identity, room, session or daemon.
 Current review, release and real-use qualification must be checked before adoption.
 
 ```sh
