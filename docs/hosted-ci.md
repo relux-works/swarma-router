@@ -18,7 +18,13 @@ switching. Public dependencies come only from the exact module graph and
 `go.sum`: download and checksum verification must succeed without changing
 either module file. Remaining Go commands run with the module proxy disabled
 and readonly module mode. The action's module/build cache restore and save are
-disabled; Go uses fresh runner temporary directories for its job-local caches.
+disabled. Before setup-go, a shell step creates private job-local caches beneath
+the runner-provided `RUNNER_TEMP` and exports their paths through `GITHUB_ENV`.
+It requires an absolute, owned, writable directory without line breaks and uses
+`umask 077` with a unique temporary directory. Runner data is read as quoted
+shell variables; no pull request text is interpolated into that script.
+The job-level environment contains no runner-context expressions, because
+GitHub does not make the `runner` context available at that workflow key.
 This does not pin the hosted OS image or the compiler used by the race detector.
 
 The last step cross-compiles all packages and test binaries for Darwin arm64

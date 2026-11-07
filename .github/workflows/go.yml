@@ -26,11 +26,25 @@ jobs:
       GOWORK: 'off'
       GOFLAGS: -mod=readonly
       GOMAXPROCS: '2'
-      GOMODCACHE: ${{ runner.temp }}/router-gomod
-      GOCACHE: ${{ runner.temp }}/router-gobuild
       GOPROXY: 'off'
       GOSUMDB: 'off'
     steps:
+      - name: Prepare private Go caches
+        run: |
+          case "${RUNNER_TEMP:?}" in
+            /*) ;;
+            *) exit 1 ;;
+          esac
+          case "$RUNNER_TEMP" in
+            *$'\n'*|*$'\r'*) exit 1 ;;
+          esac
+          test -d "$RUNNER_TEMP" && test ! -L "$RUNNER_TEMP"
+          test -O "$RUNNER_TEMP" && test -w "$RUNNER_TEMP"
+          umask 077
+          cache_root=$(mktemp -d "$RUNNER_TEMP/router-go.XXXXXXXX")
+          mkdir "$cache_root/mod" "$cache_root/build"
+          printf 'GOMODCACHE=%s\nGOCACHE=%s\n' \
+            "$cache_root/mod" "$cache_root/build" >> "$GITHUB_ENV"
       - name: Checkout exact candidate
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
