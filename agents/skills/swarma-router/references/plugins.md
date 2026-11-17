@@ -1,5 +1,13 @@
 # Optional plugins and static configuration
 
+## Read-only recommendation classifier
+
+The reduced `router-recommend/1` [classifier guide](recommend.md#classifier-seam-and-validation)
+uses a statically linked Go classifier with a deterministic default and complete
+result postvalidation. It has no dynamic model loading or policy-selected
+executable. This seam is separate from queued-notice adapters and the proposed
+full-interface declarations below.
+
 ## Implemented MVP seams
 
 These are linked Go interfaces in `relux.works/swarma-router/handoff`, available in the reduced

@@ -1,18 +1,22 @@
 # swarma-router
 
-Chooses who runs a task and on what model. The router takes a board task together with the member's card and the
-worker's current state: agent, context, limits. A small, fast local classifier weighs the available vendors and models,
-the usage thresholds, the schedule of desired runs and the preferences by project and work type. It knows that a model
-or vendor switch resets the context, and it recommends whether to keep the worker as it is or move it to a simpler or
-a stronger model, with lower or higher reasoning. Managers assign tasks through it and adapt their workers at runtime.
+Recommends whether to keep a worker's runtime/model/effort configuration or
+switch it, using explicit task, member, state and owner-policy files. The reduced
+`router-recommend/1` interface uses a deterministic rule table and a linked
+classifier seam. Every switch, including an effort-only change, reports a context
+reset. It returns advice with `execution_authority:false`; applying the decision
+remains the caller's separately authorized responsibility.
 
-The target design is an independent module connecting to the model catalog, the session host's usage events,
-the board and product cards through plugin seams. The MVP currently links one combined CLI adapter.
+The broader target design connects model catalogs, usage observations, task and
+member sources through plugins and may add a small local classifier. Automatic
+source/model discovery, scheduling and the full Route/Apply transport remain
+unimplemented. See [read-only recommendations](#read-only-model-recommendation)
+for the reduced file-input call and its limits.
 
-Status: the full routing/classification interface remains a design. The reduced
-`queued-task-handoff/0.1.0` Go implementation posts an explicitly authorized task notice.
-Qualification on 2026-10-31 covers one Darwin arm64 plan, dispatch, historical receipt replay
-and server-readback tuple. Automatic Route, Apply and model selection remain unimplemented.
+The separate `queued-task-handoff/0.1.0` Go implementation posts an explicitly
+authorized task notice. Qualification on 2026-10-31 covers one Darwin arm64 plan,
+dispatch, historical receipt replay and server-readback tuple; it does not
+qualify model recommendations or a live model switch.
 The separate `router-launch/0.1.0` Go library translates an explicitly admitted launch through
 a Curator plugin and retains one attempt. Its isolated tests do not qualify a live launch tuple.
 See [the launch API](docs/router-launch.md) for trusted admission, observation and recovery contracts.
@@ -60,9 +64,49 @@ It returns an inert recommendation and task-delivery draft with
 effectful engine as owner witnesses. Source acquisition, actual task posting and
 session creation stay with the embedding's existing admitted routes.
 
-The [module skill](agents/skills/swarma-router/SKILL.md) documents the implemented queued-notice
-interface, the implemented Go components and the proposed full routing/plugin interface. Skill packaging
+The [module skill](agents/skills/swarma-router/SKILL.md) documents read-only recommendations,
+the queued-notice interface, Go components and the proposed full routing/plugin interface. Skill packaging
 and environment adoption retain their required validation and installation gates.
+
+## Read-only model recommendation
+
+With a matching engine/CLI checkout and Go 1.23.0 or later, prepare public
+modules once with `go mod download`, then build offline:
+
+```sh
+mkdir -p .temp/bin
+GOTOOLCHAIN=local GOPROXY=off go build -trimpath -o .temp/bin/swarma-router ./cmd/swarma-router
+.temp/bin/swarma-router recommend --task task.json --member member.json --state state.json --policy policy.json --at 2026-11-17T11:00:00Z
+.temp/bin/swarma-router recommend --task task.json --member member.json --state state.json --policy policy.json --at 2026-11-17T11:00:00Z --format text
+```
+
+The [recommendation guide](agents/skills/swarma-router/references/recommend.md)
+contains complete synthetic input files, the policy format, output semantics,
+boundary examples and classifier test requirements. Use actual owner-permitted
+catalog tuples, role allowlists/ceilings, ranks, relative costs and quota scopes
+for a real decision. JSON is the default (`--format json` is explicit); all four
+file flags and the evaluation instant `--at` are required.
+
+A successful recommendation is `recommended` with `action:keep|switch`, the
+selected catalog ID, runtime/model/effort, `context_reset`, rule and reason.
+`defer` has no action or target and exits 3. Missing, future or stale relevant
+facts give `insufficient_evidence`; malformed or unknown configuration gives
+`refused`. Exit codes are recommended 0, refused 1, insufficient_evidence 2,
+and defer 3. Every result has `execution_authority:false`.
+
+Admission and quota gates precede context retention and preferences. Quota is
+restricted strictly above its threshold (8001 exceeds 8000; 8000 is clear).
+Live context is retained at or above its threshold (9000 retains at 9000;
+8999 does not). Expiry or reset equal to `--at` is stale. A quota-driven switch
+requires a cheaper admitted included option; otherwise defer. A stopped
+session's `keep` preserves configuration only. Every switch, including effort
+only, sets `context_reset:true`; keep sets it false.
+
+This command reads supplied files and writes a result; it does not launch,
+stop, send messages, apply a change, acquire telemetry or load a model plugin.
+It has no launch, messaging or environment-manager integration prerequisite.
+Examples, tests and source availability do not establish installation, a live
+integration or an actual staffing decision.
 
 ## Queued task handoff
 
@@ -215,7 +259,8 @@ recipient activity. No service restart, session stop, identity change or board m
 
 | Tool | Use and entry point | Outputs |
 | --- | --- | --- |
-| Go | `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
+| Go | `go mod download` (public dependency preparation); `go build -trimpath -o .temp/bin/swarma-router ./cmd/swarma-router`; `go build -trimpath -o .temp/bin/queued-task-handoff ./cmd/queued-task-handoff`; `go test ./...`; `go vet ./...` | Binary and task-scoped logs under `.temp/`; ordinary Go cache. |
+| swarma-router | `.temp/bin/swarma-router recommend --task task.json --member member.json --state state.json --policy policy.json --at 2026-11-17T11:00:00Z [--format json\|text]` | Read-only recommendation JSON (default) or compact text on stdout; no applied change. |
 | gofmt | `gofmt -w handoff launch inventory selection workbench localworkbench cmd/queued-task-handoff` | Formats Go source in place. |
 | task-board | Adapter uses `task-board --board-dir STORAGE q --format json 'project_config()'`, then `project_config(); get(TASK-ID) { id title }` | Read-only local configuration/task projections; no board mutations. |
 | Pulse | Self-card adapter uses `PULSE_ABS me --local-unsigned --card CARD_ABS --revision sha256:PIN --format json` with an admitted executable/card and unchanged actual caller | Read-only self declarations; isolated validation logs under `.temp/`. |

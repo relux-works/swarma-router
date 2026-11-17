@@ -1,0 +1,319 @@
+{
+  "at": "2026-11-17T11:00:00Z",
+  "inputs": {
+    "task.json": {
+      "contract": "router-recommend/1",
+      "element_id": "EXAMPLE-001",
+      "project": "example-project",
+      "class": "research",
+      "estimate_minutes": 60,
+      "review_policy": "none"
+    },
+    "member.json": {
+      "contract": "router-recommend/1",
+      "role": "developer",
+      "current": {
+        "runtime": "codex",
+        "model": "model-standard",
+        "effort": "high"
+      }
+    },
+    "state.json": {
+      "contract": "router-recommend/1",
+      "session_live": false,
+      "context_used_bps": 1000,
+      "observed_at": "2026-11-17T10:55:00Z",
+      "expires_at": "2026-11-17T11:05:00Z",
+      "provider_quotas": [
+        {
+          "scope": "pool-a",
+          "used_bps": 3000,
+          "reset_at": "2026-11-18T00:00:00Z",
+          "observed_at": "2026-11-17T10:55:00Z",
+          "expires_at": "2026-11-17T11:05:00Z"
+        },
+        {
+          "scope": "pool-b",
+          "used_bps": 1000,
+          "reset_at": "2026-11-18T00:00:00Z",
+          "observed_at": "2026-11-17T10:55:00Z",
+          "expires_at": "2026-11-17T11:05:00Z"
+        }
+      ]
+    },
+    "policy.json": {
+      "contract": "router-recommend/1",
+      "catalog": [
+        {
+          "id": "small-low",
+          "runtime": "codex",
+          "vendor": "provider-b",
+          "model": "model-small",
+          "effort": "low",
+          "capability_rank": 1,
+          "relative_cost": 1,
+          "quota_scope": "pool-b",
+          "billing": "included"
+        },
+        {
+          "id": "standard-high",
+          "runtime": "codex",
+          "vendor": "provider-a",
+          "model": "model-standard",
+          "effort": "high",
+          "capability_rank": 2,
+          "relative_cost": 2,
+          "quota_scope": "pool-a",
+          "billing": "included"
+        },
+        {
+          "id": "large-high",
+          "runtime": "codex",
+          "vendor": "provider-a",
+          "model": "model-large",
+          "effort": "high",
+          "capability_rank": 3,
+          "relative_cost": 4,
+          "quota_scope": "pool-a",
+          "billing": "included"
+        }
+      ],
+      "roles": [
+        {
+          "role": "developer",
+          "ceiling_rank": 2,
+          "allowed_tuple_ids": [
+            "small-low",
+            "standard-high"
+          ]
+        }
+      ],
+      "quota_thresholds": [
+        {
+          "scope": "pool-a",
+          "used_bps": 8000
+        },
+        {
+          "scope": "pool-b",
+          "used_bps": 8000
+        }
+      ],
+      "context_retention_bps": 9000,
+      "rules": [
+        {
+          "id": "research-small-project",
+          "project": "example-project",
+          "role": "developer",
+          "class": "research",
+          "review_policy": "none",
+          "estimate_min_minutes": 1,
+          "estimate_max_minutes": 120,
+          "preferred_tuple_ids": [
+            "standard-high",
+            "small-low"
+          ]
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "stable-keep",
+      "changes": {},
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "recommended",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R06",
+        "reason": "Current configuration remains preferred and within policy.",
+        "execution_authority": false,
+        "action": "keep",
+        "selected": "standard-high",
+        "runtime": "codex",
+        "model": "model-standard",
+        "effort": "high",
+        "context_reset": false
+      }
+    },
+    {
+      "name": "above-ceiling-lower-model",
+      "changes": {
+        "member.current.model": "model-large"
+      },
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "recommended",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R02",
+        "reason": "Current model exceeds the role ceiling; select a lower admitted model.",
+        "execution_authority": false,
+        "action": "switch",
+        "selected": "standard-high",
+        "runtime": "codex",
+        "model": "model-standard",
+        "effort": "high",
+        "context_reset": true
+      }
+    },
+    {
+      "name": "quota-cheaper-other-pool",
+      "changes": {
+        "state.provider_quotas[pool-a].used_bps": 8001
+      },
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "recommended",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R03",
+        "reason": "Current quota exceeds its threshold; select a cheaper admitted model.",
+        "execution_authority": false,
+        "action": "switch",
+        "selected": "small-low",
+        "runtime": "codex",
+        "model": "model-small",
+        "effort": "low",
+        "context_reset": true
+      }
+    },
+    {
+      "name": "quota-all-exhausted",
+      "changes": {
+        "state.provider_quotas[pool-a].used_bps": 8001,
+        "state.provider_quotas[pool-b].used_bps": 8001
+      },
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "defer",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R03",
+        "reason": "No admitted included option is quota-clear.",
+        "execution_authority": false,
+        "code": "quota_exhausted"
+      }
+    },
+    {
+      "name": "missing-context",
+      "remove": [
+        "state.context_used_bps"
+      ],
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "insufficient_evidence",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R01",
+        "reason": "Required worker-state evidence is missing.",
+        "execution_authority": false,
+        "code": "missing_input",
+        "missing": [
+          "state.context_used_bps"
+        ]
+      }
+    },
+    {
+      "name": "unknown-current-model",
+      "changes": {
+        "member.current.model": "unlisted-model"
+      },
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "refused",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R00",
+        "reason": "Current configuration is not in the explicit catalog.",
+        "execution_authority": false,
+        "code": "unknown_configuration"
+      }
+    },
+    {
+      "name": "high-context-retention",
+      "changes": {
+        "state.session_live": true,
+        "state.context_used_bps": 9000,
+        "policy.rules[0].preferred_tuple_ids": [
+          "small-low",
+          "standard-high"
+        ]
+      },
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "recommended",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R04",
+        "reason": "Preserve a live permitted configuration with high context use.",
+        "execution_authority": false,
+        "action": "keep",
+        "selected": "standard-high",
+        "runtime": "codex",
+        "model": "model-standard",
+        "effort": "high",
+        "context_reset": false
+      }
+    },
+    {
+      "name": "both-ceiling-and-quota",
+      "changes": {
+        "member.current.model": "model-large",
+        "state.provider_quotas[pool-a].used_bps": 8001
+      },
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "recommended",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R02+R03",
+        "reason": "Select a lower admitted model with lower cost and clear quota.",
+        "execution_authority": false,
+        "action": "switch",
+        "selected": "small-low",
+        "runtime": "codex",
+        "model": "model-small",
+        "effort": "low",
+        "context_reset": true
+      }
+    },
+    {
+      "name": "quota-exact-threshold-stays-clear",
+      "changes": {
+        "state.provider_quotas[pool-a].used_bps": 8000
+      },
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "recommended",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R06",
+        "reason": "Current configuration remains preferred and within policy.",
+        "execution_authority": false,
+        "action": "keep",
+        "selected": "standard-high",
+        "runtime": "codex",
+        "model": "model-standard",
+        "effort": "high",
+        "context_reset": false
+      }
+    },
+    {
+      "name": "context-one-below-threshold-uses-preference",
+      "changes": {
+        "state.session_live": true,
+        "state.context_used_bps": 8999,
+        "policy.rules[0].preferred_tuple_ids": [
+          "small-low",
+          "standard-high"
+        ]
+      },
+      "expected": {
+        "contract": "router-recommend/1",
+        "status": "recommended",
+        "task_id": "EXAMPLE-001",
+        "rule_id": "R05",
+        "reason": "Select the first eligible preferred configuration.",
+        "execution_authority": false,
+        "action": "switch",
+        "selected": "small-low",
+        "runtime": "codex",
+        "model": "model-small",
+        "effort": "low",
+        "context_reset": true
+      }
+    }
+  ]
+}
